@@ -8,6 +8,7 @@ const Doctors = () => {
   const { doctors } = useContext(AppContext);
   const [filteredDoctors, setFilteredDoctors] = useState([]);
   const [activeSpecialty, setActiveSpecialty] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,9 +30,10 @@ const Doctors = () => {
     <div className="max-w-7xl mx-auto px-4 py-10 flex flex-col items-center">
       
       <div className="flex flex-col md:flex-row gap-8">
+        <button className={`py-1 px-3 border rounded text-sm transition all sm:hidden ${showFilters? "bg-primary text-white":""}`} onClick={() => setShowFilters((prev) => !prev)}> Filters</button>
         {/* Sidebar Specialties */}
-        <aside className="w-full md:w-64 mb-8 md:mb-0">
-          <div className="bg-white rounded-2xl border border-blue-200 shadow p-4">
+        <aside className={`w-full md:w-64 mb-8 md:mb-0 ${showFilters ? 'block' : 'hidden'} ${showFilters? "flex":"hidden sm:flex"} `}>
+          <div className={`bg-white rounded-2xl border border-blue-200 shadow p-4`}>
             <h2 className="text-lg font-bold text-blue-950 mb-4 text-center md:text-left">Browse All Doctors</h2>
             <ul className="space-y-2">
               {[
