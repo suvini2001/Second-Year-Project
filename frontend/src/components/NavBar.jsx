@@ -70,14 +70,30 @@ const NavBar = () => {
                         <img className='w-3 h-3 text-black font-medium filter brightness-0' src={assets.dropdown_icon} alt="" />
                         <div className='absolute top-0 right-0 pt-14 text-base font-normal text-black-600 z-20 hidden group-hover:block'>
                           <div className='bg-white shadow-lg rounded-lg p-4 min-w-[200px]'>
-                            <p onClick={() => navigate('/My-profile')} className='py-2 px-4 hover:bg-gray-100 cursor-pointer'>My Profile</p>
-                            <p onClick={() => navigate('/My-appointments')} className='py-2 px-4 hover:bg-gray-100 cursor-pointer'>My Appointment</p>
-                            <p onClick={() => setToken(false)} className='py-2 px-4 hover:bg-gray-100 cursor-pointer'>Logout</p>
+                            <p
+                              onClick={() => navigate('/My-profile')}
+                              className='py-2 px-4 mb-2 rounded-lg border-2 border-transparent bg-gradient-to-r from-blue-200 to-blue-400 text-blue-900 font-semibold shadow-md cursor-pointer transition-all duration-300 hover:border-blue-900 hover:bg-gradient-to-r hover:from-blue-900 hover:to-blue-700 hover:text-white hover:scale-105 hover:shadow-xl'
+                            >
+                              My Profile
+                            </p>
+                            <p
+                              onClick={() => navigate('/My-appointments')}
+                              className='py-2 px-4 mb-2 rounded-lg border-2 border-transparent bg-gradient-to-r from-blue-200 to-blue-400 text-blue-900 font-semibold shadow-md cursor-pointer transition-all duration-300 hover:border-blue-900 hover:bg-gradient-to-r hover:from-blue-900 hover:to-blue-700 hover:text-white hover:scale-105 hover:shadow-xl'
+                            >
+                              My Appointment
+                            </p>
+                            <p
+                              onClick={() => setToken(false)}
+                              className='py-2 px-4 rounded-lg border-2 border-transparent bg-gradient-to-r from-blue-200 to-blue-400 text-blue-900 font-semibold shadow-md cursor-pointer transition-all duration-300 hover:border-blue-900 hover:bg-gradient-to-r hover:from-blue-900 hover:to-blue-700 hover:text-white hover:scale-105 hover:shadow-xl'
+                            >
+                              Logout
+                            </p>
                           </div>
                         </div>
                 </div>) : (
           <></>
         )}
+        
       </div>
     </div>
   )
