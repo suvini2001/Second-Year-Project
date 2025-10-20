@@ -23,7 +23,7 @@ const doctorSchema = new mongoose.Schema({
         required: true
     },
     address: {
-        type: String,
+        type: mongoose.Schema.Types.Mixed,
         required: true
     },
 
@@ -51,10 +51,10 @@ const doctorSchema = new mongoose.Schema({
     },
     availability: {
         type: Boolean,
-        required: true
+        default: true
     },
     date: {
-        type: Number,
+        type: Date,
         required: true
     },
     slots_booked: {

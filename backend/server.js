@@ -3,6 +3,7 @@ import cors from 'cors';
 import 'dotenv/config';
 import connectToMongoDB from './config/mongodb.js';
 import connectCloudinary from './config/cloudnary.js';
+import adminRouter from './routes/adminRoute.js';
 
 // cloudinary configuration
 connectCloudinary();
@@ -19,6 +20,8 @@ connectToMongoDB();
 app.use(cors());  
 app.use(express.json());
 
+// Register admin routes
+app.use('/api/admin', adminRouter);
 
 //api endpoints
 

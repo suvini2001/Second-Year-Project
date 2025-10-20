@@ -1,0 +1,21 @@
+import express from 'express';
+import { addDoctor } from '../controllers/adminController.js';
+import upload from '../middleware/multer.js';
+
+const adminRouter = express.Router();  // Create a router for admin-related routes
+
+adminRouter.post('/add-doctor', upload.single('image'), addDoctor);
+
+export default adminRouter;
+
+
+//.post() means it’s handling POST requests (usually used for adding or uploading data)
+//The URL endpoint is /add-doctor.
+
+/*  So when someone (like your frontend) sends a request to:http://localhost:8000/admin/add-doctor
+this line of code will be triggered.
+*/
+
+//What Happens When It’s Triggered
+//1. upload.single('image'): This middleware handles the file upload. It expects a single file with the field name image. It processes the uploaded file and makes it available in the request object (req.file).
+//2. addDoctor: This is the controller function that will be called after the file has been uploaded. It contains the logic to add a new doctor to the system, using the data from the request (including the uploaded image).
