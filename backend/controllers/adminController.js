@@ -1,7 +1,8 @@
 import validator from 'validator';
-import bycrypt from 'bcrypt';
+import bcrypt from 'bcrypt';
 import {v2 as cloudinary} from 'cloudinary';
 import Doctor from '../models/doctorModel.js';
+import jwt from 'jsonwebtoken';
 
 // API for adding a doctor
 
@@ -12,34 +13,47 @@ const addDoctor = async (req, res) => {
 
         console.log(doctorData, imageFile);
 
-        // Sanitize and validate data
-        doctorData.experience = parseInt(doctorData.experience.replace(/\D/g, ''), 10);
-        doctorData.fees = parseFloat(doctorData.fees);
-        doctorData.availability = doctorData.availability === 'true';
+        // Normalize common typos / alternate field names from clients
+        if (!doctorData.experience && doctorData.experiance) doctorData.experience = doctorData.experiance;
+        if (!doctorData.fees && doctorData.fee) doctorData.fees = doctorData.fee;
+        if (!doctorData.specialization && doctorData.speciality) doctorData.specialization = doctorData.speciality;
 
-        // Convert date to a valid Date object
-        const parsedDate = new Date(doctorData.date.replace(/\./g, '-'));
-        if (isNaN(parsedDate.getTime())) {
-            return res.json({ success: false, message: "Invalid date format" });
+        // Validate required fields early to avoid calling .replace on undefined
+        if (!doctorData.name || !doctorData.specialization || !doctorData.email || !doctorData.phone || !imageFile || !doctorData.password) {
+            return res.json({ success: false, message: "All fields are required" });
         }
-        doctorData.date = parsedDate;
 
-        doctorData.slots_booked = { time: doctorData.slots_booked };
+        // Sanitize and validate data safely
+        const expRaw = (doctorData.experience || '').toString();
+        doctorData.experience = expRaw ? parseInt(expRaw.replace(/\D/g, ''), 10) : 0;
 
-        doctorData.address = {
-            line1: '17th Cross, Richmond',
-            line2: 'Circle, Ring Road, London'
-        };
+        doctorData.fees = doctorData.fees ? parseFloat(doctorData.fees) : 0;
+        doctorData.availability = String(doctorData.availability) === 'true';
 
-        // Use address as string if provided, else fallback to object
-        if (typeof doctorData.address === 'string') {
-            // Accept the string as-is
-        } else if (typeof doctorData.address === 'object') {
+        // Convert date to a valid Date object only if provided
+        if (doctorData.date) {
+            const parsedDate = new Date(doctorData.date.toString().replace(/\./g, '-'));
+            if (isNaN(parsedDate.getTime())) {
+                return res.json({ success: false, message: "Invalid date format" });
+            }
+            doctorData.date = parsedDate;
+        }
+
+        doctorData.slots_booked = { time: doctorData.slots_booked || [] };
+
+        // Use address from request if provided, else fallback to default
+        if (!doctorData.address) {
+            doctorData.address = {
+                line1: '17th Cross, Richmond',
+                line2: 'Circle, Ring Road, London'
+            };
+        }
+        if (typeof doctorData.address === 'object') {
             doctorData.address = JSON.stringify(doctorData.address);
         }
 
         // Validate required fields
-        if (!doctorData.name || !doctorData.specialization || !doctorData.email || !doctorData.phone || !imageFile) {
+        if (!doctorData.name || !doctorData.specialization || !doctorData.email || !doctorData.phone || !imageFile || !doctorData.password) {
             return res.json({ success: false, message: "All fields are required" });
         }
 
@@ -51,8 +65,8 @@ const addDoctor = async (req, res) => {
             return res.json({ success: false, message: "Password must be at least 8 characters long" });
         }
 
-        const salt = await bycrypt.genSalt(10);
-        const hashedPassword = await bycrypt.hash(doctorData.password, salt);
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(doctorData.password, salt);
         doctorData.password = hashedPassword;
 
         const imageUpdate = await cloudinary.uploader.upload(imageFile.path, {
@@ -80,14 +94,21 @@ const loginAdmin = async (req, res) => {
         const { email, password } = req.body;
 
         if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
-            return res.status(200).json({ success: true, message: "Login successful" });
+            // Use an object payload and set token expiration
+            const token = jwt.sign(
+                { email },
+                process.env.JWT_SECRET,
+                { expiresIn: "1h" }
+            );
+            res.json({ success: true, token, message: "Login successful" });
+        } else {
+            res.status(401).json({ success: false, message: "Invalid email or password" });
         }
 
-        res.status(401).json({ success: false, message: "Invalid email or password" });
     } catch (error) {
         console.error("Error logging in admin:", error);
         res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
-export { addDoctor };
+export { addDoctor, loginAdmin };
