@@ -3,19 +3,19 @@ import { assets } from '../../assets/assets'
 
 const AddDoctor = () => {
     return (
-        <form>
-            <p>Add Doctor</p>
-            <div>
-                <div>
+        <form className='m-5 w-full'>
+            <p className=' mb-3 text-lg font-medium'>Add Doctor</p>
+            <div className='bg-white px-8 py-8 border rounded w-full max -h-[80vh] overflow-y-scroll'>
+                <div className='flex item-center gap-4 mb-8 text-gray-500'>
                     <label htmlFor="doc-img">
-                        <img src={assets.upload_area} alt="" />
+                        <img className='w-16 bg-gray-100 rounded-full cursor-pointer' src={assets.upload_area} alt="" />
                     </label>
                     <input type="file" id='doc-img' hidden />
                     <p>Upload Doctor's <br />Image</p>
 
                 </div>
 
-                <div>
+                <div className='flex flex-col lg:flex-row items-start gap-10 text-'>
                     <div>
                         <div>
                             <p>Doctor's Name</p>
