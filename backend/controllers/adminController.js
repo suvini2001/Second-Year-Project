@@ -79,7 +79,7 @@ const addDoctor = async (req, res) => {
         const newDoctor = new Doctor(doctorData);
         await newDoctor.save();
 
-        res.status(201).json({ message: "Doctor added successfully", data: newDoctor });
+        res.status(201).json({ success: true, message: "Doctor added successfully", data: newDoctor });
     } catch (error) {
         console.error("Error adding doctor:", error);
         res.status(500).json({ success: false, message: "Internal server error" });
