@@ -26,7 +26,11 @@ const changeAvailability =async (req,res) =>{
 const doctorList= async(req,res) =>{
     try{
         const doctors =await doctorModel.find({}).select(['-password','-email'])
-        res.json({success:true,doctors})
+        const formattedDoctors = doctors.map((doc) => ({
+            ...doc.toObject(),
+            speciality: doc.specialization // Map specialization to speciality
+        }));
+        res.json({success:true,doctors:formattedDoctors})
     }
     catch(error){
         console.log(error)

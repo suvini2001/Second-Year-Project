@@ -12,9 +12,13 @@ const Doctors = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log("Doctors from context:", doctors);
+    console.log("Speciality from URL:", speciality);
     if (doctors && doctors.length > 0) {
       if (speciality) {
-        setFilteredDoctors(doctors.filter((doc) => doc.speciality.toLowerCase() === speciality.toLowerCase()));
+        const filtered = doctors.filter((doc) => doc.speciality && doc.speciality.toLowerCase() === speciality.toLowerCase());
+        console.log("Filtered Doctors:", filtered);
+        setFilteredDoctors(filtered);
       } else {
         setFilteredDoctors(doctors);
       }
@@ -54,9 +58,11 @@ const Doctors = () => {
                       if (activeSpecialty === cat.value) {
                         setFilteredDoctors(doctors);
                         setActiveSpecialty(null);
+                        navigate("/doctors"); // Reset URL parameter
                       } else {
-                        setFilteredDoctors(doctors.filter((doc) => doc.speciality.toLowerCase() === cat.value));
+                        setFilteredDoctors(doctors.filter((doc) => doc.speciality && doc.speciality.toLowerCase() === cat.value));
                         setActiveSpecialty(cat.value);
+                        navigate(`/doctors/${cat.value}`); // Update URL parameter
                       }
                     }}
                   >
@@ -97,7 +103,7 @@ const Doctors = () => {
                     <h3 className="font-bold text-xl text-blue-900 mb-1 group-hover:text-blue-700 transition-colors">
                       {item.name}
                     </h3>
-                    <p className="text-blue-600 font-medium mb-2">{item.speciality}</p>
+                    <p className="text-blue-600 font-medium mb-2">Speciality: {item.speciality || 'Not specified'}</p>
                     <div className="text-sm text-gray-600 flex items-center gap-2 mb-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -120,4 +126,4 @@ const Doctors = () => {
   )
 }
 
-export default Doctors  
+export default Doctors
