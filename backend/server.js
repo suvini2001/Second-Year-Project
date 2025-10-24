@@ -5,6 +5,7 @@ import connectToMongoDB from './config/mongodb.js';
 import connectCloudinary from './config/cloudnary.js';
 import adminRouter from './routes/adminRoute.js';
 import doctorRouter from './routes/doctorRoute.js'; 
+import userRouter from './routes/userRoute.js';
 
 // cloudinary configuration
 connectCloudinary();
@@ -25,6 +26,7 @@ app.use(express.json());
 app.use('/api/admin', adminRouter);
 
 app.use('/api/doctor',doctorRouter)
+app.use('/api/user',userRouter)
 
 //api endpoints
 
