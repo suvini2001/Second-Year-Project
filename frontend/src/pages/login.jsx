@@ -1,19 +1,66 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useContext } from 'react';
+import { AppContext } from '../context/AppContext';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
+
+  const {backendUrl,token,setToken} = useContext(AppContext);
+  const navigate = useNavigate();
   const [state, setState] = useState('Login');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [name, setName] = useState(localStorage.getItem('token') ? localStorage.getItem('token') : false);
 
   const onSubmitHandler = async (event) => {
     event.preventDefault();
+
+    try{
+
+      if(state === "Login"){
+        const {data} = await axios.post(backendUrl + '/api/user/login', {email, password});
+        if(data.success){
+          setToken(data.token);
+          localStorage.setItem('token', data.token);
+          toast.success("Login Successful");
+        } else {
+          toast.error(data.message);
+        }
+
+      } else if(state === "Sign Up"){
+        const {data} = await axios.post(backendUrl + '/api/user/register', {name, email, password});
+        if(data.success){
+          setToken(data.token);
+          localStorage.setItem('token', data.token);
+          setToken(data.token);
+          toast.success("Registration Successful");
+        } else {
+          toast.error(data.message);
+        }
+      }
+
+    } catch (error) {
+      console.error(error);
+      toast.error("An error occurred. Please try again.");
+    }
+
     // Handle form submission
   };
 
+
+  useEffect(() => {
+   
+    if (token) {
+      navigate('/');
+    }
+  }, [token]);
+
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <form className="bg-gradient-to-br from-blue-900 to-blue-700 p-10 rounded-2xl shadow-2xl w-full max-w-md mx-4 transform hover:scale-105 transition-transform duration-300">
+      <form onSubmit={onSubmitHandler} className="bg-gradient-to-br from-blue-900 to-blue-700 p-10 rounded-2xl shadow-2xl w-full max-w-md mx-4 transform hover:scale-105 transition-transform duration-300">
         <div className="w-full">
           <h2 className="text-4xl font-extrabold text-center text-white mb-4 drop-shadow-2xl">{state === "Sign Up" ? "Create an account" : "Login"}</h2>
           <p className="text-center text-white text-opacity-80 mb-8">Please {state === "Sign Up" ? "sign up" : "log in"} to book an appointment.</p>

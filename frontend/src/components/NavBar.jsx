@@ -1,11 +1,19 @@
 import { assets } from '../assets/assets_frontend/assets' 
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
+import { useContext } from 'react'
+import { AppContext } from '../context/AppContext'
 
 const NavBar = () => {
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
-  const [token, setToken] = useState(true);
+  const {token,setToken,userData} = useContext(AppContext);
+
+  const logout=()=>{
+    setToken('');
+    navigate('/');
+  }
+  
 
   return (
     <div className='flex items-center justify-between text-sm py-4 mb-5 border-b border-b-grey-400 relative'>
@@ -77,9 +85,9 @@ const NavBar = () => {
       {/* Right Section - Profile & Mobile Menu Button */}
       <div className='flex items-center gap-4'>
         {/* Profile Section */}
-        {token && (
+        {token && userData && (
           <div className="flex items-center gap-2 cursor-pointer group relative">
-            <img className='w-10 h-10 rounded-full' src={assets.profile_pic} alt="Profile" />
+            <img className='w-10 h-10 rounded-full' src={userData.image} alt="Profile" />
             <img className='w-3 h-3 text-black font-medium filter brightness-0' src={assets.dropdown_icon} alt="Dropdown" />
             <div className='absolute top-full right-0 pt-2 text-base font-normal text-black-600 z-20 hidden group-hover:block'>
               <div className='bg-white shadow-lg rounded-lg p-4 min-w-[200px]'>
@@ -96,7 +104,7 @@ const NavBar = () => {
                   My Appointment
                 </p>
                 <p
-                  onClick={() => setToken(false)}
+                  onClick={logout}
                   className='py-2 px-4 rounded-lg border-2 border-transparent bg-gradient-to-r from-blue-200 to-blue-400 text-blue-900 font-semibold shadow-md cursor-pointer transition-all duration-300 hover:border-blue-900 hover:bg-gradient-to-r hover:from-blue-900 hover:to-blue-700 hover:text-white hover:scale-105 hover:shadow-xl'
                 >
                   Logout
