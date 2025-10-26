@@ -37,11 +37,11 @@ const DoctorsList = () => {
                   <div className="flex items-center gap-2 mt-2 justify-center">
                     <input onChange={()=>changeAvailability(item._id)}
                       type="checkbox"
-                      checked={item.available}
+                      checked={item.availability}
                       readOnly
                       className="form-checkbox h-4 w-4 text-green-400 border-blue-300 focus:ring-0 cursor-default bg-blue-900"
                     />
-                    <span className="text-xs font-semibold text-blue-100">Available</span>
+                    <span className="text-xs font-semibold text-blue-100">availability</span>
                   </div>
                 </div>
               </div>

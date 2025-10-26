@@ -62,7 +62,7 @@ const MyProfile = () => {
               </label>
             ) : (
               <img
-                src={`${userData.image}?t=${new Date().getTime()}`}
+                src={userData.image}
                 alt="Profile"
                 className="w-32 h-32 rounded-full border-4 border-white shadow-lg"
               />

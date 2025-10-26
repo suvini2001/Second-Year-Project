@@ -9,8 +9,11 @@ const changeAvailability =async (req,res) =>{
             const {docId} =req.body
             const docData =await doctorModel.findById(docId)
 
-            await doctorModel.findByIdAndUpdate(docId,{availabile: !docData.availabile})
-            res.json ({success:true,message:"Availability Changed"})
+            // Toggle the correct `availability` field
+            const updatedAvailability = !docData.availability;
+            await doctorModel.findByIdAndUpdate(docId,{ availability: updatedAvailability })
+
+            res.json ({success:true,message:"Availability Changed", availability: updatedAvailability })
 
 
 
@@ -28,7 +31,8 @@ const doctorList= async(req,res) =>{
         const doctors =await doctorModel.find({}).select(['-password','-email'])
         const formattedDoctors = doctors.map((doc) => ({
             ...doc.toObject(),
-            speciality: doc.specialization // Map specialization to speciality
+            speciality: doc.specialization, // Map specialization to speciality
+            availability: doc.availability, // Ensure availability is included
         }));
         res.json({success:true,doctors:formattedDoctors})
     }

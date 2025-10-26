@@ -3,7 +3,9 @@ import bcrypt from 'bcrypt'
 import userModel from '../models/userModel.js'
 import jwt from 'jsonwebtoken'
 import {v2 as cloudinary} from 'cloudinary'
-
+import doctorModel from '../models/doctorModel.js'
+import appointmentModel from '../models/appointmentModel.js'
+import crypto from 'crypto'
 
 
 
@@ -132,7 +134,63 @@ const updateProfile = async (req, res) => {
 }
 
 
+// API for book an appointment
+const bookAppointment = async (req,res) => {
+    try {
+        const{userId, docId, slotDate, slotTime} = req.body
+        const docData = await doctorModel.findById(docId).select('-password')
+
+        if(!docData){
+            return res.json({success:false,message:'Doctor not found'})
+        }
+
+        if(!docData.availability){
+            return res.json({success:false,message:'Doctor not available'})
+        }
+
+        const slots_booked = docData.slots_booked || {}
+
+        if(slots_booked[slotDate]){
+            if(slots_booked[slotDate].includes(slotTime)){
+                return res.json({success:false,message:'Slot not available'})
+            }
+            slots_booked[slotDate].push(slotTime)
+        }else{
+            slots_booked[slotDate] = [slotTime]
+        }
+
+        const userData = await userModel.findById(userId).select('-password')
+
+        await doctorModel.findByIdAndUpdate(docId,{slots_booked})
+
+        const cleanDocData = docData.toObject()
+        delete cleanDocData.slots_booked // exclude booked slots when embedding doctor data in appointment record
+
+        const appointmentData = {
+            userId,
+            docId,
+            userData,
+            docData: cleanDocData,
+            amount:docData.fees,
+            slotTime,
+            slotDate,
+            date:Date.now()
+        }
+
+        const  newAppointment = new appointmentModel(appointmentData)
+        await newAppointment.save()
+        res.json({success:true, message:'Appointment Booked'})
+
+    } catch (error) {
+        console.log(error)
+        res.json({success:false, message:error.message })
+    }
+}
 
 
 
-export {registerUser,loginUser,getProfile,updateProfile}
+
+
+
+
+export {registerUser,loginUser,getProfile,updateProfile,bookAppointment}
