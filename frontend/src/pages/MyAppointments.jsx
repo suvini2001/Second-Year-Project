@@ -5,7 +5,7 @@ import { toast } from "react-hot-toast";
 import { useEffect } from "react";
 
 const MyAppointments = () => {
-  const { backendUrl, token } = useContext(AppContext);
+  const { backendUrl, token,getDoctorsData } = useContext(AppContext);
   const [appointments, setAppointments] = useState([]);
   const months = [
     "",
@@ -64,13 +64,13 @@ const MyAppointments = () => {
           if (dateA.getTime() === dateB.getTime()) {
             // Convert time to 24-hour format for comparison
             const timeA =
-                a.slotTime.includes("pm") && !a.slotTime.includes("12:")
-                  ? parseInt(a.slotTime) + 12
-                  : parseInt(a.slotTime);
+              a.slotTime.includes("pm") && !a.slotTime.includes("12:")
+                ? parseInt(a.slotTime) + 12
+                : parseInt(a.slotTime);
             const timeB =
-                b.slotTime.includes("pm") && !b.slotTime.includes("12:")
-                  ? parseInt(b.slotTime) + 12
-                  : parseInt(b.slotTime);
+              b.slotTime.includes("pm") && !b.slotTime.includes("12:")
+                ? parseInt(b.slotTime) + 12
+                : parseInt(b.slotTime);
             return timeB - timeA;
           }
 
@@ -90,6 +90,27 @@ const MyAppointments = () => {
       getUserAppointments();
     }
   }, [token, getUserAppointments]);
+
+  const cancelAppointment = async (appointmentId) => {
+    try {
+      console.log(appointmentId);
+      const { data } = await axios.post(
+        backendUrl + "/api/user/cancel-appointment",
+        { appointmentId },
+        { headers: { token } }
+      );
+      if (data.success) {
+        toast.success(data.message);
+        getUserAppointments();
+        getDoctorsData();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.message);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white py-10 px-4">
@@ -116,7 +137,9 @@ const MyAppointments = () => {
                   <p className="text-xl font-semibold text-blue-100 mb-1">
                     {item.docData.name}
                   </p>
-                  <p className="text-blue-200 mb-2">{item.docData.speciality}</p>
+                  <p className="text-blue-200 mb-2">
+                    {item.docData.speciality}
+                  </p>
                   <p className="text-blue-100 mb-2">
                     Date & Time:
                     <span className="font-medium text-white">
@@ -124,12 +147,24 @@ const MyAppointments = () => {
                     </span>
                   </p>
                   <div className="flex gap-4">
-                    <button className="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold rounded-xl shadow-md hover:from-blue-400 hover:to-blue-600 hover:shadow-xl hover:scale-105 transition-all duration-300">
-                      Pay Online
-                    </button>
-                    <button className="px-6 py-2 bg-gradient-to-r from-red-700 to-red-900 text-white font-semibold rounded-xl shadow-md hover:from-red-800 hover:to-red-900 hover:shadow-xl hover:scale-105 transition-all duration-300">
-                      Cancel Appointment
-                    </button>
+                    {!item.cancelled && (
+                      <button className="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold rounded-xl shadow-md hover:from-blue-400 hover:to-blue-600 hover:shadow-xl hover:scale-105 transition-all duration-300">
+                        Pay Online
+                      </button>
+                    )}
+                    {item.cancelled && (
+                      <button className="px-6 py-2 bg-gradient-to-r from-gray-400 to-gray-600 text-white font-semibold rounded-xl shadow-md cursor-not-allowed opacity-70">
+                        Appointment Cancelled
+                      </button>
+                    )}
+                    {!item.cancelled && (
+                      <button
+                        onClick={() => cancelAppointment(item._id)}
+                        className="px-6 py-2 bg-gradient-to-r from-red-700 to-red-900 text-white font-semibold rounded-xl shadow-md hover:from-red-800 hover:to-red-900 hover:shadow-xl hover:scale-105 transition-all duration-300"
+                      >
+                        Cancel Appointment
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
