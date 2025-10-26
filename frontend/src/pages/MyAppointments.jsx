@@ -4,6 +4,7 @@ import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useEffect } from "react";
 import { Link } from "react-router-dom"; // Add this import
+import { useNavigate } from "react-router-dom";
 
 const MyAppointments = () => {
   const { backendUrl, token,getDoctorsData } = useContext(AppContext);
@@ -47,6 +48,8 @@ const MyAppointments = () => {
 
     return `${day} ${months[monthIndex]} ${year}`;
   };
+
+  const navigate = useNavigate();
 
   // getting the user appointments to display from the backend
   const getUserAppointments = useCallback(async () => {

@@ -22,6 +22,12 @@ connectToMongoDB();
 app.use(cors());  
 app.use(express.json());
 
+// simple request logger to help debug missing routes
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} -> ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 // Register admin routes
 app.use('/api/admin', adminRouter);
 
