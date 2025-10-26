@@ -223,11 +223,47 @@ const cancelAppointment = async (req,res)=>{
 }
 
 
+// API to generate a mock payment session
+const generateMockPayment = (req, res) => {
+    try {
+        const { appointmentId } = req.body;
+        if (!appointmentId) {
+            return res.json({ success: false, message: "Appointment ID is required" });
+        }
+        // Simulate a payment session creation
+        const paymentSession = {
+            sessionId: `mock_session_${appointmentId}_${Date.now()}`,
+            appointmentId,
+            redirectUrl: `${process.env.FRONTEND_URL}/mock-payment/${appointmentId}`
+        };
+        res.json({ success: true, payment: paymentSession });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: "Failed to generate mock payment session" });
+    }
+}
 
+// API to verify mock payment and update database
+const verifyMockPayment = async (req, res) => {
+    try {
+        const { appointmentId } = req.body;
+        if (!appointmentId) {
+            return res.json({ success: false, message: "Appointment ID is required" });
+        }
+        const appointment = await appointmentModel.findById(appointmentId);
+        if (appointment) {
+            await appointmentModel.findByIdAndUpdate(appointmentId, { payment: true });
+            const doctor = await doctorModel.findById(appointment.docId);
+            if (doctor) {
+                const newEarnings = (doctor.earnings || 0) + appointment.amount;
+                await doctorModel.findByIdAndUpdate(appointment.docId, { earnings: newEarnings });
+            }
+        }
+        res.json({ success: true, message: "Payment successful and appointment updated" });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: "Payment verification failed" });
+    }
+}
 
-
-
-
-
-
-export { registerUser, loginUser, getProfile, updateProfile, bookAppointment,listAppointment,cancelAppointment };
+export { registerUser, loginUser, getProfile, updateProfile, bookAppointment,listAppointment,cancelAppointment,generateMockPayment,verifyMockPayment };

@@ -3,6 +3,7 @@ import { AppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useEffect } from "react";
+import { Link } from "react-router-dom"; // Add this import
 
 const MyAppointments = () => {
   const { backendUrl, token,getDoctorsData } = useContext(AppContext);
@@ -147,9 +148,17 @@ const MyAppointments = () => {
                     </span>
                   </p>
                   <div className="flex gap-4">
-                    {!item.cancelled && (
-                      <button className="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold rounded-xl shadow-md hover:from-blue-400 hover:to-blue-600 hover:shadow-xl hover:scale-105 transition-all duration-300">
+                    {!item.cancelled && !item.payment && (
+                      <Link
+                        to={`/mock-payment/${item._id}`}
+                        className="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold rounded-xl shadow-md hover:from-blue-400 hover:to-blue-600 hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center justify-center"
+                      >
                         Pay Online
+                      </Link>
+                    )}
+                    {item.payment && (
+                      <button className="px-6 py-2 bg-gradient-to-r from-green-500 to-green-700 text-white font-semibold rounded-xl shadow-md cursor-not-allowed opacity-70">
+                        Paid
                       </button>
                     )}
                     {item.cancelled && (
