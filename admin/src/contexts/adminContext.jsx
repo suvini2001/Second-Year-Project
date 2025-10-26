@@ -12,7 +12,9 @@ const AdminContextProvider = (props) => {
   const [aToken, setAtoken] = useState(localStorage.getItem('aToken')?localStorage.getItem('aToken'):'');
   const [doctors,setDoctors]=useState([]);
   const [appointments,setAppointments]=useState([]);
+  const [dashData,setDashData]=useState(false);
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
+  
   const getAllDoctors = async () => {
     try {
       const {data} =await axios.post(backendUrl+'/api/admin/all-doctors',{},{headers:{'aToken':aToken}});
@@ -80,10 +82,27 @@ const AdminContextProvider = (props) => {
     }
 };
 
+  // to fetch the dashboard data using the API
+    const getDashData = async ()=>{
+        try {
+            const {data} = await axios.get(backendUrl+'/api/admin/dashboard',{headers:{aToken}})
+            if(data.success){
+                setDashData(data.dashData)
+                
+            }else{
+                toast.error(data.message)
+            }
+        } catch (error) {
+            toast.error(error.message)
+        }
+    }
+
+
+
 
   const value = {
 
-    aToken,setAtoken,backendUrl,getAllDoctors,doctors,changeAvailability,appointments,getAllAppointments,cancelAppointment
+    aToken,setAtoken,backendUrl,getAllDoctors,doctors,changeAvailability,appointments,getAllAppointments,cancelAppointment,getDashData,dashData,
 
     // Define your global state and functions here
   };
