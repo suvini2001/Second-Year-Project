@@ -1,4 +1,7 @@
 import doctorModel from '../models/doctorModel.js';
+import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
+import appointmentModel from '../models/apointmentModel.js';
 
 
 
@@ -43,5 +46,91 @@ const doctorList= async(req,res) =>{
 }
 
 
+// API for doctor Login
+const loginDoctor = async (req, res) => {
+    try {
+        const { email, password } = req.body
+        const doctor = await doctorModel.findOne({ email })
 
-export {changeAvailability,doctorList}
+        if (!doctor) {
+            return res.json({ success: false, message: 'Invalid credentials' })
+        }
+
+        const isMatch = await bcrypt.compare(password, doctor.password)
+
+        if (isMatch) {
+            const token = jwt.sign({ id: doctor._id }, process.env.JWT_SECRET)
+            return res.json({ success: true, token })
+        } else {
+            return res.json({ success: false, message: 'Invalid credentials' })
+        }
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+    }
+}
+
+
+// Get all appointments for logged-in doctor
+const appointmentsDoctor = async (req, res) => {
+    try {
+        const docId = req.docId || req.body.docId || req.query.docId; // Corrected typo from req.docd to req.docId
+        if (!docId) {
+            return res.json({ success: false, message: 'Doctor not authorized' });
+        }
+        const appointments = await appointmentModel.find({ docId }).sort({ date: -1 });
+        return res.json({ success: true, appointments });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// API to mark an appointment completed for the doctor panel
+const appointmentComplete = async (req, res) => {
+    try {
+        const { appointmentId } = req.body;
+        console.log("appointmentComplete called with:", { appointmentId, docId: req.docId });
+
+        const appointmentData = await appointmentModel.findById(appointmentId);
+        if (!appointmentData) {
+            return res.status(404).json({ success: false, message: "Appointment not found" });
+        }
+
+        if (appointmentData.docId.toString() !== req.docId) {
+            return res.status(403).json({ success: false, message: "Unauthorized to complete this appointment" });
+        }
+
+        await appointmentModel.findByIdAndUpdate(appointmentId, { isCompleted: true });
+        return res.json({ success: true, message: "Appointment marked as completed" });
+    } catch (error) {
+        console.log("Error in appointmentComplete:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// API to cancel appointment for doctor panel
+const appointmentCancel = async (req, res) => {
+    try {
+        const { appointmentId } = req.body;
+        console.log("appointmentCancel called with:", { appointmentId, docId: req.docId });
+
+        const appointmentData = await appointmentModel.findById(appointmentId);
+        if (!appointmentData) {
+            return res.status(404).json({ success: false, message: "Appointment not found" });
+        }
+
+        if (appointmentData.docId.toString() !== req.docId) {
+            return res.status(403).json({ success: false, message: "Unauthorized to cancel this appointment" });
+        }
+
+        await appointmentModel.findByIdAndUpdate(appointmentId, { cancelled: true });
+        return res.json({ success: true, message: "Appointment cancelled successfully" });
+    } catch (error) {
+        console.log("Error in appointmentCancel:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+
+export {changeAvailability,doctorList,loginDoctor,appointmentsDoctor,appointmentComplete,appointmentCancel}

@@ -4,7 +4,14 @@ export const AppContext = createContext({});
 
 export const AppContextProvider = (props) => {
 
-  const currency='$'; // You can modify this to use dynamic currency if needed
+
+  // Currency formatting function
+  const currency = (amount) => {
+    if (typeof amount === 'number' && !isNaN(amount)) {
+      return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    return '$0.00';
+  };
 
  // Calculate age from DOB (YYYY-MM-DD or ISO string)
     const calculateAge = (dob) => {
