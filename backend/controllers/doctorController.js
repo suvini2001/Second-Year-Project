@@ -98,12 +98,10 @@ const appointmentComplete = async (req, res) => {
     }
 
     if (appointmentData.docId.toString() !== req.docId) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Unauthorized to complete this appointment",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized to complete this appointment",
+      });
     }
 
     await appointmentModel.findByIdAndUpdate(appointmentId, {
@@ -136,12 +134,10 @@ const appointmentCancel = async (req, res) => {
     }
 
     if (appointmentData.docId.toString() !== req.docId) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Unauthorized to cancel this appointment",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized to cancel this appointment",
+      });
     }
 
     await appointmentModel.findByIdAndUpdate(appointmentId, {
@@ -193,6 +189,61 @@ const doctorDashboard = async (req, res) => {
   }
 };
 
+// API to get doctor profile for Doctor Panel
+const doctorProfile = async (req, res) => {
+  try {
+    const docId = req.docId; // <-- Get the ID from the auth middleware
+    const profileData = await doctorModel.findById(docId).select("-password");
+    res.json({ success: true, profileData });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// API to update doctor profile data from Doctor Panel
+const updateDoctorProfile = async (req, res) => {
+  try {
+    // 1. Get the docId from the auth middleware (NOT req.body)
+    const docId = req.docId;
+
+    // 2. Get all the fields you sent from the frontend
+    // Accept any fields for partial update
+    let update = { ...req.body };
+    // Parse address if sent as JSON string
+    if (typeof update.address === "string") {
+      try {
+        update.address = JSON.parse(update.address);
+      } catch {
+        /* keep as is */
+      }
+    }
+    // Convert available to boolean if string
+    if (typeof update.available === "string") {
+      update.available = update.available === "true";
+    }
+    // Remove undefined fields (only update provided fields)
+    Object.keys(update).forEach(key => {
+      if (update[key] === undefined) delete update[key];
+    });
+
+    // Optional image upload
+    const imageFile = req.file;
+    if (imageFile) {
+      const uploadRes = await cloudinary.uploader.upload(imageFile.path, {
+        resource_type: "image",
+      });
+      update.image = uploadRes.secure_url;
+    }
+
+    await doctorModel.findByIdAndUpdate(docId, update);
+    res.json({ success: true, message: "Profile Updated" });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
 export {
   changeAvailability,
   doctorList,
@@ -201,4 +252,6 @@ export {
   appointmentComplete,
   appointmentCancel,
   doctorDashboard,
+  doctorProfile,
+  updateDoctorProfile,
 };
