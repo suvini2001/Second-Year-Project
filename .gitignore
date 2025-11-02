@@ -1,0 +1,42 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Keys & secrets
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Databases / logs
+*.sqlite
+*.db
+*.log
+
+# Misc
+*.tgz
