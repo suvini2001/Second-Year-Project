@@ -1,13 +1,18 @@
 import { useContext, useState, useCallback } from "react";
+import { FiMessageSquare } from "react-icons/fi";
 import { AppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useEffect } from "react";
 import { Link } from "react-router-dom"; // Add this import
 import { useNavigate } from "react-router-dom";
+import ChatBox from "../components/ChatBox";
+
 
 const MyAppointments = () => {
-  const { backendUrl, token,getDoctorsData } = useContext(AppContext);
+  const [openChatAppointmentId, setOpenChatAppointmentId] = useState(null);
+
+  const { backendUrl, token, getDoctorsData } = useContext(AppContext);
   const [appointments, setAppointments] = useState([]);
   const months = [
     "",
@@ -138,9 +143,23 @@ const MyAppointments = () => {
                   />
                 </div>
                 <div className="flex-1">
-                  <p className="text-xl font-semibold text-blue-100 mb-1">
-                    {item.docData.name}
-                  </p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-xl font-semibold text-blue-100">
+                      {item.docData.name}
+                    </p>
+                    {/* Chat button: only show for paid, not cancelled, not completed */}
+                    {item.payment && !item.cancelled && !item.isCompleted && (
+                      <button
+                        onClick={() =>
+                          navigate(`/chat/${item._id}`, { state: { doctorName: item.docData.name } })
+                        }
+                        className="w-8 h-8 flex items-center justify-center bg-purple-100 text-[#0a174e] rounded hover:bg-purple-200 transition-colors ml-1 shadow focus:outline-none focus:ring-2 focus:ring-purple-400"
+                        title="Chat with Doctor"
+                      >
+                        <FiMessageSquare size={18} color="#0a174e" />
+                      </button>
+                    )}
+                  </div>
                   <p className="text-blue-200 mb-2">
                     {item.docData.speciality}
                   </p>
@@ -169,7 +188,7 @@ const MyAppointments = () => {
                         Appointment Cancelled
                       </button>
                     )}
-                    {!item.cancelled &&  !item.isCompleted &&(
+                    {!item.cancelled && !item.isCompleted && (
                       <button
                         onClick={() => cancelAppointment(item._id)}
                         className="px-6 py-2 bg-gradient-to-r from-red-700 to-red-900 text-white font-semibold rounded-xl shadow-md hover:from-red-800 hover:to-red-900 hover:shadow-xl hover:scale-105 transition-all duration-300"
@@ -181,6 +200,16 @@ const MyAppointments = () => {
                       <button className="px-6 py-2 bg-gradient-to-r from-green-700 to-green-900 text-white font-semibold rounded-xl shadow-md cursor-not-allowed opacity-70">
                         Appointment Completed
                       </button>
+                    )}
+
+                    {/* Render ChatBox if this appointment's chat is open */}
+                    {openChatAppointmentId === item._id && (
+                      <div className="mt-4">
+                        <ChatBox
+                          appointmentId={item._id}
+                          doctorName={item.docData.name}
+                        />
+                      </div>
                     )}
                   </div>
                 </div>

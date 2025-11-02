@@ -1,8 +1,8 @@
 import express from 'express'
-import { registerUser,loginUser, getProfile,updateProfile,bookAppointment,listAppointment,cancelAppointment,generateMockPayment,verifyMockPayment} from '../controllers/userController.js'
+import { registerUser,loginUser, getProfile,updateProfile,bookAppointment,listAppointment,cancelAppointment,generateMockPayment,verifyMockPayment } from '../controllers/userController.js'
 import authUser from '../middleware/authUser.js';
 import upload from '../middleware/multer.js';
-
+import { getMessages } from '../controllers/messageController.js'; 
 
 const userRouter =express.Router();
 
@@ -17,6 +17,7 @@ userRouter.get('/appointments',authUser,listAppointment)
 userRouter.post('/cancel-appointment',authUser,cancelAppointment)
 userRouter.post('/generate-payment', authUser, generateMockPayment)
 userRouter.post('/verify-payment', verifyMockPayment)
+userRouter.get('/messages/:appointmentId', authUser, getMessages);  
 
 
 

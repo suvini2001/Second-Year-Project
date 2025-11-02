@@ -1,6 +1,8 @@
 import express from 'express'
-import { doctorList,loginDoctor,appointmentsDoctor,appointmentCancel,appointmentComplete,doctorDashboard,doctorProfile,updateDoctorProfile} from '../controllers/doctorController.js'
+import { doctorList,loginDoctor,appointmentsDoctor,appointmentCancel,appointmentComplete,doctorDashboard,doctorProfile,updateDoctorProfile } from '../controllers/doctorController.js'
 import authDoctor from '../middleware/authDoctor.js'
+import { getMessages } from '../controllers/messageController.js';
+ 
 
  const doctorRouter =express.Router()
 
@@ -26,5 +28,5 @@ doctorRouter.get('/profile', authDoctor, async (req, res) => {
 
 doctorRouter.get('/profile', authDoctor,doctorProfile)
 doctorRouter.post('/update-profile', authDoctor,updateDoctorProfile)
-
+doctorRouter.get('/messages/:appointmentId', authDoctor, getMessages);
  export default doctorRouter
