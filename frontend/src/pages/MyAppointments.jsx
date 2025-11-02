@@ -151,7 +151,7 @@ const MyAppointments = () => {
                     </span>
                   </p>
                   <div className="flex gap-4">
-                    {!item.cancelled && !item.payment && (
+                    {!item.cancelled && !item.payment && !item.isCompleted && (
                       <Link
                         to={`/mock-payment/${item._id}`}
                         className="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold rounded-xl shadow-md hover:from-blue-400 hover:to-blue-600 hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center justify-center"
@@ -159,22 +159,27 @@ const MyAppointments = () => {
                         Pay Online
                       </Link>
                     )}
-                    {item.payment && (
+                    {item.payment && !item.isCompleted && (
                       <button className="px-6 py-2 bg-gradient-to-r from-green-500 to-green-700 text-white font-semibold rounded-xl shadow-md cursor-not-allowed opacity-70">
                         Paid
                       </button>
                     )}
-                    {item.cancelled && (
+                    {item.cancelled && !item.isCompleted && (
                       <button className="px-6 py-2 bg-gradient-to-r from-gray-400 to-gray-600 text-white font-semibold rounded-xl shadow-md cursor-not-allowed opacity-70">
                         Appointment Cancelled
                       </button>
                     )}
-                    {!item.cancelled && (
+                    {!item.cancelled &&  !item.isCompleted &&(
                       <button
                         onClick={() => cancelAppointment(item._id)}
                         className="px-6 py-2 bg-gradient-to-r from-red-700 to-red-900 text-white font-semibold rounded-xl shadow-md hover:from-red-800 hover:to-red-900 hover:shadow-xl hover:scale-105 transition-all duration-300"
                       >
                         Cancel Appointment
+                      </button>
+                    )}
+                    {item.isCompleted && (
+                      <button className="px-6 py-2 bg-gradient-to-r from-green-700 to-green-900 text-white font-semibold rounded-xl shadow-md cursor-not-allowed opacity-70">
+                        Appointment Completed
                       </button>
                     )}
                   </div>
