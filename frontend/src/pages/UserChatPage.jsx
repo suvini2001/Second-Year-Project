@@ -25,7 +25,7 @@ const UserChatPage = () => {
         >
           <FiArrowLeft size={22} />
         </button>
-        <h2 className="text-2xl font-bold text-blue-900 drop-shadow">Chat with {doctorName}</h2>
+        <h2 className="text-2xl font-bold text-blue-900 drop-shadow">Chat with Dr. {doctorName}</h2>
       </div>
 
       {/* Chat Container */}
