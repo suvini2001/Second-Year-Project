@@ -17,17 +17,17 @@ const DoctorChatPage = () => {
   // Optionally, you could fetch patient name/details here if needed
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-900 via-blue-800 to-blue-700">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300">
       {/* Header Bar */}
-      <div className="flex items-center gap-4 px-6 py-4 bg-blue-950/80 shadow-lg">
+      <div className="flex items-center gap-4 px-6 py-4 bg-blue-200/80 shadow-lg">
         <button
           onClick={() => navigate(-1)}
-          className="p-2 rounded-full bg-blue-800 hover:bg-blue-700 text-cyan-200 hover:text-white transition-colors"
+          className="p-2 rounded-full bg-blue-300 hover:bg-blue-400 text-blue-800 hover:text-blue-900 transition-colors"
           title="Back"
         >
           <FiArrowLeft size={22} />
         </button>
-        <h2 className="text-2xl font-bold text-cyan-100 drop-shadow">Chat with {patientName}</h2>
+        <h2 className="text-2xl font-bold text-blue-900 drop-shadow">Chat with {patientName}</h2>
       </div>
 
       {/* Chat Container */}

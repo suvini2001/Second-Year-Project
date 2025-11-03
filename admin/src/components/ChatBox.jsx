@@ -61,22 +61,28 @@ const ChatBox = ({ appointmentId, patientName }) => {
     <div className="border rounded-lg p-4 bg-white shadow-md">  
       <h3 className="font-semibold mb-4 text-blue-900">Chat with {patientName}</h3>  
         
-      <div className="h-96 overflow-y-auto mb-4 space-y-2 bg-gray-50 p-3 rounded">  
-        {messages.map((msg, idx) => (  
-          <div   
-            key={idx}   
-            className={`p-2 rounded ${  
-              msg.senderType === 'doctor'   
-                ? 'bg-blue-100 ml-auto'   
-                : 'bg-gray-200'  
-            } max-w-xs`}  
-          >  
-            <p className="text-sm">{msg.message}</p>  
-            <span className="text-xs text-gray-500">  
-              {new Date(msg.timestamp).toLocaleTimeString()}  
-            </span>  
-          </div>  
-        ))}  
+      <div className="flex flex-col h-96 overflow-y-auto mb-4 space-y-4 bg-gray-50 p-4 rounded-lg">
+        {messages.map((msg, idx) => (
+          <div
+            key={idx}
+            className={`flex items-end gap-2 ${
+              msg.senderType === 'doctor' ? 'self-end' : 'self-start'
+            }`}
+          >
+            <div
+              className={`p-3 rounded-xl max-w-md ${
+                msg.senderType === 'doctor'
+                  ? 'bg-blue-500 text-white rounded-br-none'
+                  : 'bg-gray-200 text-gray-800 rounded-bl-none'
+              }`}
+            >
+              <p className="text-sm">{msg.message}</p>
+              <span className="text-xs opacity-70 mt-1 block text-right">
+                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          </div>
+        ))}
       </div>  
         
       <div className="flex gap-2">  

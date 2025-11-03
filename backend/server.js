@@ -9,6 +9,7 @@ import userRouter from './routes/userRoute.js';
 import { Server } from 'socket.io';  
 import http from 'http';  
 import jwt from 'jsonwebtoken';
+import messageModel from './models/messageModel.js';
 
 // cloudinary configuration
 connectCloudinary();
@@ -19,6 +20,7 @@ const PORT = process.env.PORT || 8000;  // define the port for the server
 
 const server = http.createServer(app);
 const io = new Server(server, {  
+  path: "/socket.io/",
   cors: {  
     origin: ["http://localhost:5173", "http://localhost:5174"], // Vite dev servers  
     credentials: true  
@@ -116,7 +118,7 @@ app.get('/', (req, res) => {
 });
 
 // server listener
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
