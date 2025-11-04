@@ -40,3 +40,6 @@ Thumbs.db
 
 # Misc
 *.tgz
+
+# Project-specific: do not commit this document
+chat.docx
