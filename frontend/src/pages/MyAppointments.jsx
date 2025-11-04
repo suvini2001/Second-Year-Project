@@ -151,12 +151,17 @@ const MyAppointments = () => {
                     {item.payment && !item.cancelled && !item.isCompleted && (
                       <button
                         onClick={() =>
-                          navigate(`/chat/${item._id}`, { state: { doctorName: item.docData.name } })
+                          navigate(`/user-chat/${item._id}`)
                         }
-                        className="w-8 h-8 flex items-center justify-center bg-purple-100 text-[#0a174e] rounded hover:bg-purple-200 transition-colors ml-1 shadow focus:outline-none focus:ring-2 focus:ring-purple-400"
+                        className="relative w-8 h-8 flex items-center justify-center bg-purple-100 text-[#0a174e] rounded hover:bg-purple-200 transition-colors ml-1 shadow focus:outline-none focus:ring-2 focus:ring-purple-400"
                         title="Chat with Doctor"
                       >
                         <FiMessageSquare size={18} color="#0a174e" />
+                        {item.unreadCount > 0 && (
+                          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+                            {item.unreadCount}
+                          </span>
+                        )}
                       </button>
                     )}
                   </div>

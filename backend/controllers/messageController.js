@@ -6,6 +6,7 @@ const getMessages = async (req, res) => {
   try {  
     const { appointmentId } = req.params;  
     const userId = req.userId || req.docId;  
+    const userType = req.userType; // 'user' or 'doctor'  
       
     // Verify user has access to this appointment  
     const appointment = await appointmentModel.findById(appointmentId); 
@@ -15,6 +16,13 @@ const getMessages = async (req, res) => {
     if (!appointment || (appointment.userId.toString() !== userId && appointment.docId.toString() !== userId)) {  
       return res.json({ success: false, message: 'Unauthorized' });  
     }  
+
+    // Mark messages as read
+    const recipientType = userType === 'user' ? 'doctor' : 'user';
+    await messageModel.updateMany(
+      { appointmentId: appointmentId, senderType: recipientType, isRead: false },
+      { $set: { isRead: true } }
+    );
     
     //If authorization passes, it retrieves all messages from the database where appointmentId matches.
     const messages = await messageModel.find({ appointmentId }).sort({ timestamp: 1 });  

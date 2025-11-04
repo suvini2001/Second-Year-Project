@@ -11,9 +11,10 @@ const authUser = (req, res, next) => {
         const token_decode = jwt.verify(token, process.env.JWT_SECRET);
 
         req.userId = token_decode.id; // Set req.userId instead of req.body.userId
+        req.userType = token_decode.type; // Pass user type to the request
 
-        if (!token_decode.email === process.env.ADMIN_EMAIL) {
-            return res.status(401).json({ success: false, message: "Token verification failed, login again" });
+        if (token_decode.type !== 'user') {
+            return res.status(401).json({ success: false, message: "Invalid token for user" });
         }
         next();
     } catch (error) {

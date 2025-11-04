@@ -14,6 +14,7 @@ const authDoctor = (req, res, next) => {
         console.log("Decoded token:", token_decode);
 
         req.docId = token_decode.id; // Set req.docId from the decoded token
+        req.userType = token_decode.type; // Pass user type to the request
 
         if (!req.docId) {
             console.log("Token does not contain a valid id.");

@@ -14,6 +14,7 @@ const AppContextProvider = ({ children }) => {
     const [token, setTokenState] = useState(() => localStorage.getItem('token') || '');
     const [userData, setUserData] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     // Custom setToken to sync with localStorage
     const setToken = (newToken) => {
@@ -57,6 +58,18 @@ const AppContextProvider = ({ children }) => {
         }
     };
 
+    const fetchUnreadCount = async () => {
+        if (!token) return;
+        try {
+            const { data } = await axios.get(backendUrl + '/api/user/unread-messages', { headers: { token } });
+            if (data.success) {
+                setUnreadCount(data.unreadCount);
+            }
+        } catch (error) {
+            console.log("Failed to fetch unread messages count", error);
+        }
+    };
+
     const value = {
         doctors,getDoctorsData,
         currencySymbol,
@@ -66,7 +79,9 @@ const AppContextProvider = ({ children }) => {
         userData,setUserData,
         loadUserProfileData,
         isEditing,
-        setIsEditing
+        setIsEditing,
+        unreadCount,
+        fetchUnreadCount
     };
     
 
@@ -80,8 +95,10 @@ const AppContextProvider = ({ children }) => {
     useEffect(() => {
         if (token) {
             loadUserProfileData();
+            fetchUnreadCount();
         } else {
             setUserData(false);
+            setUnreadCount(0);
         }
     }, [token]);
 

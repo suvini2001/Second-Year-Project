@@ -84,7 +84,7 @@ const DoctorProfile = () => {
                         <div className="bg-gradient-to-br from-blue-950 via-blue-900 to-blue-700 rounded-2xl overflow-hidden ring-2 ring-blue-800">
                             <div className="relative group">
                                 <img
-                                    src={docImg ? URL.createObjectURL(docImg) : (profileData.image || assets.default_profile)}
+                                    src={docImg ? URL.createObjectURL(docImg) : (profileData.image || null)}
                                     alt="Doctor"
                                     className="w-full h-64 object-cover object-top border-b-4 border-blue-800 group-hover:scale-105 group-hover:brightness-110 transition-all duration-300"
                                 />

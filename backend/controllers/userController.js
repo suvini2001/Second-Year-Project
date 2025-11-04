@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import { v2 as cloudinary } from "cloudinary";
 import doctorModel from "../models/doctorModel.js";
 import appointmentModel from "../models/appointmentModel.js";
+import messageModel from "../models/messageModel.js";
 import crypto from "crypto";
 
 //API to register a user
@@ -185,8 +186,23 @@ const bookAppointment = async (req, res) => {
 const listAppointment = async (req, res) => {
   try {
     const userId = req.userId;
-    const appointments = await appointmentModel.find({ userId });
-    res.json({ success: true, appointments });
+    const appointments = await appointmentModel.find({ userId }).lean(); // Use .lean() for plain JS objects
+
+    const appointmentsWithUnreadCount = await Promise.all(
+      appointments.map(async (appointment) => {
+        const unreadCount = await messageModel.countDocuments({
+          appointmentId: appointment._id,
+          senderType: 'doctor', // Messages from doctor are for the user
+          isRead: false,
+        });
+        return {
+          ...appointment,
+          unreadCount,
+        };
+      })
+    );
+
+    res.json({ success: true, appointments: appointmentsWithUnreadCount });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });
@@ -266,4 +282,26 @@ const verifyMockPayment = async (req, res) => {
     }
 }
 
-export { registerUser, loginUser, getProfile, updateProfile, bookAppointment,listAppointment,cancelAppointment,generateMockPayment,verifyMockPayment };
+// API to get unread messages count
+const getUnreadMessagesCount = async (req, res) => {
+    try {
+        const userId = req.userId;
+        // Find all appointments for the user
+        const userAppointments = await appointmentModel.find({ userId: userId });
+        const appointmentIds = userAppointments.map(app => app._id);
+
+        // Count unread messages from doctors
+        const unreadCount = await messageModel.countDocuments({
+            appointmentId: { $in: appointmentIds },
+            senderType: 'doctor',
+            isRead: false
+        });
+
+        res.json({ success: true, unreadCount });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: "Failed to get unread messages count" });
+    }
+};
+
+export { registerUser, loginUser, getProfile, updateProfile, bookAppointment,listAppointment,cancelAppointment,generateMockPayment,verifyMockPayment, getUnreadMessagesCount };

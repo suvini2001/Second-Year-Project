@@ -12,9 +12,7 @@ const DoctorDashboard = () => {
   useEffect(() => {
     if (dToken) {
       getDashData();
-      if (!profileData) {
-        getProfileData();
-      }
+      getProfileData();
     }
     // Only depend on dToken, getDashData, getProfileData
     // Do NOT depend on profileData to avoid infinite loop
@@ -79,7 +77,7 @@ const DoctorDashboard = () => {
               <div className="pt-2 pb-1 px-0 max-h-[32rem] overflow-auto">
                 {Array.isArray(dashData.latestAppointments) && dashData.latestAppointments.slice(0, 10).map((item, index) => (
                   <div key={index} className="flex items-center px-6 py-3 gap-3 bg-gradient-to-r from-blue-950 via-blue-900 to-blue-800 hover:from-blue-900 hover:via-blue-800 hover:to-cyan-900 hover:scale-[1.01] hover:shadow-xl transition-all duration-200 rounded-xl">
-                    <img className="rounded-full w-10 h-10 object-cover ring-2 ring-cyan-400/40 shadow-md" src={item?.userData?.image || ''} alt='' />
+                    <img className="rounded-full w-10 h-10 object-cover ring-2 ring-cyan-400/40 shadow-md" src={item?.userData?.image || null} alt='' />
                     <div className="flex-1 text-sm">
                       <p className="text-cyan-100 font-medium">{item?.userData?.name || '—'}</p>
                       <p className="text-cyan-300">{slotDateFormat(item?.slotDate)}</p>
@@ -119,7 +117,7 @@ const DoctorDashboard = () => {
           <div className="hidden lg:block">
             <div className="rounded-2xl p-[2px] bg-gradient-to-tr from-blue-900 via-blue-800 to-blue-700 shadow-2xl h-full">
               <div className="bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 rounded-2xl overflow-hidden ring-1 ring-blue-900/60 h-full">
-                <img src={profileData?.image || ''} alt='Doctor profile' className='w-full h-full object-cover object-top' />
+                <img src={profileData?.image || null} alt='Doctor profile' className='w-full h-full object-cover object-top' />
               </div>
             </div>
           </div>

@@ -2,6 +2,7 @@ import doctorModel from "../models/doctorModel.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import appointmentModel from "../models/apointmentModel.js";
+import messageModel from "../models/messageModel.js";
 
 const changeAvailability = async (req, res) => {
   try {
@@ -67,14 +68,30 @@ const loginDoctor = async (req, res) => {
 // Get all appointments for logged-in doctor
 const appointmentsDoctor = async (req, res) => {
   try {
-    const docId = req.docId || req.body.docId || req.query.docId; // Corrected typo from req.docd to req.docId
+    const docId = req.docId;
     if (!docId) {
       return res.json({ success: false, message: "Doctor not authorized" });
     }
     const appointments = await appointmentModel
       .find({ docId })
-      .sort({ date: -1 });
-    return res.json({ success: true, appointments });
+      .sort({ date: -1 })
+      .lean();
+
+    const appointmentsWithUnreadCount = await Promise.all(
+      appointments.map(async (appointment) => {
+        const unreadCount = await messageModel.countDocuments({
+          appointmentId: appointment._id,
+          senderType: 'user', // Messages from user are for the doctor
+          isRead: false,
+        });
+        return {
+          ...appointment,
+          unreadCount,
+        };
+      })
+    );
+
+    return res.json({ success: true, appointments: appointmentsWithUnreadCount });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });
@@ -244,6 +261,28 @@ const updateDoctorProfile = async (req, res) => {
   }
 };
 
+// API to get unread messages count for a doctor
+const getUnreadMessagesCount = async (req, res) => {
+  try {
+    const docId = req.docId;
+    // Find all appointments for the doctor
+    const doctorAppointments = await appointmentModel.find({ docId: docId });
+    const appointmentIds = doctorAppointments.map(app => app._id);
+
+    // Count unread messages from users
+    const unreadCount = await messageModel.countDocuments({
+      appointmentId: { $in: appointmentIds },
+      senderType: 'user',
+      isRead: false
+    });
+
+    res.json({ success: true, unreadCount });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: "Failed to get unread messages count" });
+  }
+};
+
 export {
   changeAvailability,
   doctorList,
@@ -254,4 +293,5 @@ export {
   doctorDashboard,
   doctorProfile,
   updateDoctorProfile,
+  getUnreadMessagesCount,
 };

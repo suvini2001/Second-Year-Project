@@ -47,7 +47,7 @@ const AllAppointments = () => {
             <div className="flex items-center gap-2 z-20">
               <img
                 className="w-8 h-8 rounded-full object-cover border-2 border-blue-200 group-hover:border-blue-400 transition shadow"
-                src={item.userData?.image || ""}
+                src={item.userData?.image || null}
                 alt=""
               />
               <p className="font-semibold text-base bg-gradient-to-r from-blue-900 via-blue-800 to-blue-700 text-transparent bg-clip-text drop-shadow">
@@ -66,7 +66,7 @@ const AllAppointments = () => {
             <div className="flex items-center gap-2 z-20">
               <img
                 className="w-8 h-8 rounded-full object-cover bg-blue-100 border-2 border-blue-200 group-hover:border-blue-400 transition shadow"
-                src={item.docData?.image || ""}
+                src={item.docData?.image || null}
                 alt=""
               />
               <p className="font-semibold text-base bg-gradient-to-r from-blue-900 via-blue-800 to-blue-700 text-transparent bg-clip-text drop-shadow">

@@ -20,7 +20,8 @@ export const DoctorContextProvider = (props) => {
         headers: { dToken },
       });
       if (data.success) {
-        setProfileData(data.profile);
+        // Backend returns { success, profileData } – not { profile }
+        setProfileData(data.profileData);
       } else {
         toast.error(data.message);
       }
