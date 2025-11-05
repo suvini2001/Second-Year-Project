@@ -1,7 +1,8 @@
-import React, { useContext, useEffect, useState } from 'react';  //standard React hooks for managing component state, lifecycle, and accessing context.
+import React, { useContext, useEffect, useRef, useState } from 'react';  //standard React hooks for managing component state, lifecycle, and accessing context.
 import { AppContext } from '../context/AppContext';  //a context object that likely provides global values like the logged-in user’s token and backend URL
 import axios from 'axios';  //for making HTTP API requests to the backend.
 import { useNavigate } from 'react-router-dom';   //for programmatic navigation between routes.
+import { io } from 'socket.io-client'; // for realtime inbox updates
 
 
 // AppContext	A global storage for app-wide data
@@ -35,10 +36,11 @@ const Messages = () => {
 	const [error, setError] = useState(''); //stores any error message to display to the user.
 	const navigate = useNavigate(); 
 
-	// Fetch inbox initially and then keep it fresh with a light polling + on-focus refresh
+	// Realtime inbox: initial fetch + socket "inbox-update" + on-focus refresh
 	useEffect(() => {
 		let mounted = true; // prevent state updates after unmount
 		let firstLoad = true; // only show the big loader on the first fetch
+		const socketRef = { current: null };
 
 		const fetchInbox = async () => {
 			if (!token) {
@@ -72,16 +74,23 @@ const Messages = () => {
 		// initial fetch
 		fetchInbox();
 
+		// open socket to receive realtime inbox updates
+		if (token) {
+			socketRef.current = io(backendUrl, { auth: { token } });
+			socketRef.current.on('inbox-update', () => {
+				fetchInbox();
+			});
+		}
+
 		// refresh when window regains focus
 		const onFocus = () => fetchInbox();
 		window.addEventListener('focus', onFocus);
 
-		// light polling while on this page
-		const intervalId = setInterval(fetchInbox, 5000); // 5s
-
 		return () => {
 			mounted = false;
-			clearInterval(intervalId);
+			if (socketRef.current) {
+				socketRef.current.disconnect();
+			}
 			window.removeEventListener('focus', onFocus);
 		};
 	}, [token, backendUrl]);

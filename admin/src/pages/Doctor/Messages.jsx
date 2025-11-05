@@ -1,7 +1,8 @@
-import React, { useContext, useEffect, useState } from "react"; //standard React hooks for managing component state, lifecycle, and accessing context.
+import React, { useContext, useEffect, useRef, useState } from "react"; //standard React hooks for managing component state, lifecycle, and accessing context.
 import { DoctorContext } from "../../contexts/doctorContext"; // use doctor context to access ddToken and backendUrl
 import axios from "axios"; //for making HTTP API requests to the backend.
 import { useNavigate } from "react-router-dom"; //for programmatic navigation between routes.
+import { io } from 'socket.io-client';
 
 //this helper function converts a timestamp into a human-readable "time ago" format.
 const timeAgo = (ts) => {
@@ -30,10 +31,11 @@ const Messages = () => {
   const [error, setError] = useState(""); //stores any error message to display to the user.
   const navigate = useNavigate();
 
-  // Keep inbox fresh: initial fetch + focus refresh + light polling
+  // Realtime inbox: initial fetch + socket "inbox-update" + on-focus refresh
   useEffect(() => {
     let mounted = true; // avoid setState on unmounted
     let firstLoad = true; // avoid loader flicker on polls
+    const socketRef = { current: null };
 
     const fetchInbox = async () => {
       if (!dToken) {
@@ -69,16 +71,23 @@ const Messages = () => {
     // initial
     fetchInbox();
 
+    // open socket to receive realtime inbox updates
+    if (dToken) {
+      socketRef.current = io(backendUrl, { auth: { token: dToken } });
+      socketRef.current.on('inbox-update', () => {
+        fetchInbox();
+      });
+    }
+
     // on focus
     const onFocus = () => fetchInbox();
     window.addEventListener("focus", onFocus);
 
-    // polling every 5s
-    const intervalId = setInterval(fetchInbox, 5000);
-
     return () => {
       mounted = false;
-      clearInterval(intervalId);
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
       window.removeEventListener("focus", onFocus);
     };
   }, [dToken, backendUrl]);

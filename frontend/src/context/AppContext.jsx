@@ -1,8 +1,9 @@
-import { createContext, useEffect, useMemo } from 'react';
+import { createContext, useEffect, useMemo, useRef } from 'react';
 import { useState } from 'react';
 import axios from 'axios';
 export const AppContext = createContext();
 import {toast} from 'react-toastify';
+import { io } from 'socket.io-client';
 
 
 const AppContextProvider = ({ children }) => {
@@ -15,6 +16,7 @@ const AppContextProvider = ({ children }) => {
     const [userData, setUserData] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+    const socketRef = useRef(null);
 
     // Custom setToken to sync with localStorage
     const setToken = (newToken) => {
@@ -96,9 +98,32 @@ const AppContextProvider = ({ children }) => {
         if (token) {
             loadUserProfileData();
             fetchUnreadCount();
+            // Setup realtime updates for unread counter
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
+            socketRef.current = io(backendUrl, { auth: { token } });
+            socketRef.current.on('inbox-update', () => {
+                fetchUnreadCount();
+            });
+            const onFocus = () => fetchUnreadCount();
+            window.addEventListener('focus', onFocus);
+
+            return () => {
+                window.removeEventListener('focus', onFocus);
+                if (socketRef.current) {
+                    socketRef.current.disconnect();
+                    socketRef.current = null;
+                }
+            };
         } else {
             setUserData(false);
             setUnreadCount(0);
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+                socketRef.current = null;
+            }
         }
     }, [token]);
 

@@ -1,6 +1,7 @@
-import { createContext, useState, useCallback } from "react";
+import { createContext, useState, useCallback, useEffect, useRef } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { io } from 'socket.io-client';
 
 export const DoctorContext = createContext({});
 
@@ -13,6 +14,8 @@ export const DoctorContextProvider = (props) => {
   const [appointments, setAppointments] = useState([]);
   const [dashData, setDashData] = useState(false);
   const [profileData, setProfileData] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const socketRef = useRef(null);
   // Fetch doctor profile data
   const getProfileData = useCallback(async () => {
     try {
@@ -48,6 +51,21 @@ export const DoctorContextProvider = (props) => {
     } catch (error) {
       console.log(error);
       toast.error("Something went wrong while fetching appointments");
+    }
+  }, [backendUrl, dToken]);
+
+  // Fetch unread messages count for doctor
+  const fetchUnreadCount = useCallback(async () => {
+    if (!dToken) return;
+    try {
+      const { data } = await axios.get(`${backendUrl}/api/doctor/unread-messages`, {
+        headers: { dToken }
+      });
+      if (data.success) {
+        setUnreadCount(data.unreadCount);
+      }
+    } catch (error) {
+      console.log('Failed to fetch doctor unread messages count', error);
     }
   }, [backendUrl, dToken]);
 
@@ -105,6 +123,38 @@ export const DoctorContextProvider = (props) => {
     }
   }, [backendUrl, dToken]);
 
+  // Initialize socket for realtime unread count updates and do initial fetch on login
+  useEffect(() => {
+    if (!dToken) {
+      setUnreadCount(0);
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      return;
+    }
+    // Initial unread count
+    fetchUnreadCount();
+
+    // Setup socket
+    socketRef.current = io(backendUrl, { auth: { token: dToken } });
+    socketRef.current.on('inbox-update', () => {
+      fetchUnreadCount();
+    });
+
+    // Optional: refresh on window focus
+    const onFocus = () => fetchUnreadCount();
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, [backendUrl, dToken, fetchUnreadCount]);
+
   const value = {
     dToken,
     setDToken,
@@ -120,6 +170,8 @@ export const DoctorContextProvider = (props) => {
     profileData,
     setProfileData,
     getProfileData,
+    unreadCount,
+    fetchUnreadCount,
   };
   return (
     <DoctorContext.Provider value={value}>

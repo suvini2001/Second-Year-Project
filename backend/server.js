@@ -10,6 +10,7 @@ import { Server } from 'socket.io';
 import http from 'http';  
 import jwt from 'jsonwebtoken';
 import messageModel from './models/messageModel.js';
+import appointmentModel from './models/appointmentModel.js';
 
 // cloudinary configuration
 connectCloudinary();
@@ -53,6 +54,12 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {  
 
   console.log(`User connected: ${socket.userId}`);  
+  // Join a personal room based on role to support inbox updates
+  if (socket.userType === 'user') {
+    socket.join(`user-${socket.userId}`);
+  } else if (socket.userType === 'doctor') {
+    socket.join(`doctor-${socket.userId}`);
+  }
     
   // Join appointment-specific room  
   socket.on('join-appointment', (appointmentId) => {  
@@ -77,6 +84,20 @@ io.on('connection', (socket) => {
       ...newMessage.toObject(),  
       timestamp: new Date()  
     });  
+
+
+    // This code handles the process of notifying the user and doctor in real-time whenever there’s an update related to their shared appointment.
+    //  It does so by emitting an event to their respective Socket.io rooms (user-${userId} and doctor-${doctorId}). The front-end would listen for these events and update the inbox UI for both participants.
+    // Emit inbox update events to both participants' personal rooms
+    try {
+      const appt = await appointmentModel.findById(appointmentId).lean();
+      if (appt) {
+        io.to(`user-${appt.userId}`).emit('inbox-update', { appointmentId });
+        io.to(`doctor-${appt.docId}`).emit('inbox-update', { appointmentId });
+      }
+    } catch (err) {
+      console.error('Failed to emit inbox-update:', err.message);
+    }
   });  
     
   socket.on('disconnect', () => {  

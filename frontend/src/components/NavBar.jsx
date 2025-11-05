@@ -7,7 +7,7 @@ import { AppContext } from '../context/AppContext'
 const NavBar = () => {
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
-  const {token,setToken,userData} = useContext(AppContext);
+  const {token,setToken,userData, unreadCount} = useContext(AppContext);
 
   const logout=()=>{
     setToken('');
@@ -106,9 +106,14 @@ const NavBar = () => {
 
                 <p
                   onClick={() => navigate('/Messages')}
-                  className='py-2 px-4 mb-2 rounded-lg border-2 border-transparent bg-gradient-to-r from-blue-200 to-blue-400 text-blue-900 font-semibold shadow-md cursor-pointer transition-all duration-300 hover:border-blue-900 hover:bg-gradient-to-r hover:from-blue-900 hover:to-blue-700 hover:text-white hover:scale-105 hover:shadow-xl'
+                  className='py-2 px-4 mb-2 rounded-lg border-2 border-transparent bg-gradient-to-r from-blue-200 to-blue-400 text-blue-900 font-semibold shadow-md cursor-pointer transition-all duration-300 hover:border-blue-900 hover:bg-gradient-to-r hover:from-blue-900 hover:to-blue-700 hover:text-white hover:scale-105 hover:shadow-xl flex items-center gap-2'
                 >
-                  Messages
+                  <span>Messages</span>
+                  {unreadCount > 0 && (
+                    <span className='inline-flex items-center justify-center min-w-6 h-6 px-2 rounded-full text-xs font-bold bg-blue-700 text-white'>
+                      {unreadCount}
+                    </span>
+                  )}
                 </p>
 
                 <p
