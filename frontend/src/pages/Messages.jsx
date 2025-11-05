@@ -35,41 +35,54 @@ const Messages = () => {
 	const [error, setError] = useState(''); //stores any error message to display to the user.
 	const navigate = useNavigate(); 
 
-//The component runs this effect when it first renders or when token or backendUrl changes.
-
+	// Fetch inbox initially and then keep it fresh with a light polling + on-focus refresh
 	useEffect(() => {
-		let mounted = true;  //is a flag to prevent setting state after the component unmounts (avoids React warnings).
+		let mounted = true; // prevent state updates after unmount
+		let firstLoad = true; // only show the big loader on the first fetch
+
 		const fetchInbox = async () => {
 			if (!token) {
-				setLoading(false);  //skip fetching (user not logged in).
+				if (mounted) {
+					setInbox([]);
+					setLoading(false);
+				}
 				return;
 			}
-            //fetching logic
 			try {
-				setLoading(true);
-                // Makes a GET request to the backend to fetch the user's inbox data, including the authentication token in the headers.
+				if (mounted && firstLoad) setLoading(true);
 				const { data } = await axios.get(`${backendUrl}/api/user/inbox`, {
 					headers: { token },
 				});
-
-                //If successful, store the inbox data into state.
-				if (mounted) {
-					if (data.success) {
-						setInbox(data.inbox || []);
-						setError('');
-					} else {
-						setError(data.message || 'Failed to load inbox');
-					}
+				if (!mounted) return;
+				if (data.success) {
+					setInbox(data.inbox || []);
+					setError('');
+				} else {
+					setError(data.message || 'Failed to load inbox');
 				}
 			} catch (e) {
 				if (mounted) setError(e.response?.data?.message || e.message || 'Failed to load inbox');
 			} finally {
 				if (mounted) setLoading(false);
+				firstLoad = false;
 			}
 		};
+
+        
+		// initial fetch
 		fetchInbox();
+
+		// refresh when window regains focus
+		const onFocus = () => fetchInbox();
+		window.addEventListener('focus', onFocus);
+
+		// light polling while on this page
+		const intervalId = setInterval(fetchInbox, 5000); // 5s
+
 		return () => {
-			mounted = false;  //When component unmounts, set mounted = false so no state is updated afterward (prevents memory leaks).
+			mounted = false;
+			clearInterval(intervalId);
+			window.removeEventListener('focus', onFocus);
 		};
 	}, [token, backendUrl]);
 
