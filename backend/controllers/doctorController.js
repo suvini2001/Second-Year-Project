@@ -283,6 +283,85 @@ const getUnreadMessagesCount = async (req, res) => {
   }
 };
 
+// API to get doctor inbox (one conversation per appointment) with last message and unread count
+const getDoctorInbox = async (req, res) => {
+  try {
+    const doctorId = req.docId;  // authDoctor middleware attaches req.docId after verifying the doctor's token
+
+
+    // Queries the database for all appointments belonging to the doctor. 
+    const appointments = await appointmentModel
+      .find({ docId: doctorId }) // filters appointments where the docId field matches the current doctor
+      .select('_id userData date cancelled isCompleted payment')
+      .lean();   //tells Mongoose to return plain JavaScript objects
+
+    // For each appointment, compute lastMessage and unreadCount
+    // .map() goes through each appointment in the array.
+    //For every appointment, you’ll gather two things:
+    // The last message sent in that conversation.
+    // The count of unread messages from the doctor.
+    //Promise.all() runs all these lookups in parallel, improving performance instead of doing them one by one
+
+    const inbox = await Promise.all(
+      appointments.map(async (app) => {
+
+
+        const [lastMessage, unreadCount] = await Promise.all([
+          //Here we make two database calls simultaneously for each appointment:
+          //a)lastMessage
+          messageModel
+            .findOne({ appointmentId: app._id }) //finds any message that belongs to this appointment.returns only the most recent message.
+            .sort({ timestamp: -1 }) //sorts messages in descending order of timestamp (newest first).
+            .lean(),//again returns a plain object.
+            //b) unreadCount
+          messageModel.countDocuments({  // counts how many messages match:
+            appointmentId: app._id,
+            senderType: 'user',
+            isRead: false,
+          }),
+        ]);
+
+        // build a summary object for this appointment
+        return {
+          appointmentId: app._id,
+          user: {
+            id: app.userData?._id || app.userData?.id || undefined,  //handle inconsistent data (some DBs might store doctor ID under _id, others under id)
+            name: app.userData?.name,
+            image: app.userData?.image,
+            
+          },
+          lastMessage: lastMessage  //last message details
+            ? {
+                message: lastMessage.message,
+                timestamp: lastMessage.timestamp,
+                senderType: lastMessage.senderType,
+              }
+            : null,
+          unreadCount,  //unread messages
+          meta: {
+            date: app.date,
+            cancelled: app.cancelled,
+            isCompleted: app.isCompleted,
+            payment: app.payment,
+          },
+        };
+      })
+    );
+
+    // Sort by latest activity (lastMessage timestamp or appointment date)
+    inbox.sort((a, b) => {
+      const at = a.lastMessage?.timestamp || a.meta.date || 0;
+      const bt = b.lastMessage?.timestamp || b.meta.date || 0;
+      return bt - at;
+    });
+
+    res.json({ success: true, inbox });   // Sends a JSON response back to the client.
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
 export {
   changeAvailability,
   doctorList,
@@ -294,4 +373,6 @@ export {
   doctorProfile,
   updateDoctorProfile,
   getUnreadMessagesCount,
+  getDoctorInbox,
+  
 };

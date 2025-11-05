@@ -103,12 +103,22 @@ const NavBar = () => {
                 >
                   My Appointment
                 </p>
+
+                <p
+                  onClick={() => navigate('/Messages')}
+                  className='py-2 px-4 mb-2 rounded-lg border-2 border-transparent bg-gradient-to-r from-blue-200 to-blue-400 text-blue-900 font-semibold shadow-md cursor-pointer transition-all duration-300 hover:border-blue-900 hover:bg-gradient-to-r hover:from-blue-900 hover:to-blue-700 hover:text-white hover:scale-105 hover:shadow-xl'
+                >
+                  Messages
+                </p>
+
                 <p
                   onClick={logout}
                   className='py-2 px-4 rounded-lg border-2 border-transparent bg-gradient-to-r from-blue-200 to-blue-400 text-blue-900 font-semibold shadow-md cursor-pointer transition-all duration-300 hover:border-blue-900 hover:bg-gradient-to-r hover:from-blue-900 hover:to-blue-700 hover:text-white hover:scale-105 hover:shadow-xl'
                 >
                   Logout
                 </p>
+
+                
               </div>
             </div>
           </div>

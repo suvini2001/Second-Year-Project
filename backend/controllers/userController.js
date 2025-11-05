@@ -304,4 +304,187 @@ const getUnreadMessagesCount = async (req, res) => {
     }
 };
 
-export { registerUser, loginUser, getProfile, updateProfile, bookAppointment,listAppointment,cancelAppointment,generateMockPayment,verifyMockPayment, getUnreadMessagesCount };
+// API to get user inbox (one conversation per appointment) with last message and unread count
+const getUserInbox = async (req, res) => {
+  try {
+    const userId = req.userId;  // authUser middleware attaches req.userId after verifying the user's token. This ensures the API returns inbox data only for the authenicated user.
+
+
+    //Queries the database for all appointments belonging to the user. 
+    const appointments = await appointmentModel
+      .find({ userId }) //filters appointments where the userId field matches the current user.
+      .select('_id docData date cancelled isCompleted payment')
+      .lean();   //tells Mongoose to return plain JavaScript objects
+
+    // For each appointment, compute lastMessage and unreadCount
+    // .map() goes through each appointment in the array.
+    //For every appointment, you’ll gather two things:
+    // The last message sent in that conversation.
+    // The count of unread messages from the doctor.
+    //Promise.all() runs all these lookups in parallel, improving performance instead of doing them one by one
+
+    const inbox = await Promise.all(
+      appointments.map(async (app) => {
+
+
+        const [lastMessage, unreadCount] = await Promise.all([
+          //Here we make two database calls simultaneously for each appointment:
+          //a)lastMessage
+          messageModel
+            .findOne({ appointmentId: app._id }) //finds any message that belongs to this appointment.returns only the most recent message.
+            .sort({ timestamp: -1 }) //sorts messages in descending order of timestamp (newest first).
+            .lean(),//again returns a plain object.
+            //b) unreadCount
+          messageModel.countDocuments({  //counts how many messages match:
+            appointmentId: app._id,
+            senderType: 'doctor',
+            isRead: false,
+          }),
+        ]);
+
+        // build a summary object for this appointment
+        return {
+          appointmentId: app._id,
+          doctor: {
+            id: app.docData?._id || app.docData?.id || undefined,  //handle inconsistent data (some DBs might store doctor ID under _id, others under id)
+            name: app.docData?.name,
+            image: app.docData?.image,
+            specialization: app.docData?.specialization || app.docData?.speciality,
+          },
+          lastMessage: lastMessage  //last message details
+            ? {
+                message: lastMessage.message,
+                timestamp: lastMessage.timestamp,
+                senderType: lastMessage.senderType,
+              }
+            : null,
+          unreadCount,  //unread messages
+          meta: {
+            date: app.date,
+            cancelled: app.cancelled,
+            isCompleted: app.isCompleted,
+            payment: app.payment,
+          },
+        };
+      })
+    );
+
+    // Sort by latest activity (lastMessage timestamp or appointment date)
+    inbox.sort((a, b) => {
+      const at = a.lastMessage?.timestamp || a.meta.date || 0;
+      const bt = b.lastMessage?.timestamp || b.meta.date || 0;
+      return bt - at;
+    });
+
+    res.json({ success: true, inbox });   //Sends a JSON response back to the client.
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+export { registerUser, loginUser, getProfile, updateProfile, bookAppointment, listAppointment, cancelAppointment, generateMockPayment, verifyMockPayment, getUnreadMessagesCount, getUserInbox };
+
+
+//The meta object is a container for appointment metadata — meaning, it stores extra contextual information about each appointment that isn’t directly part of the messaging data but is still relevant when displaying or managing the inbox.
+
+
+//🧠 Why include meta in the inbox?
+
+// There are 4 main reasons:
+
+// 1️⃣ Preserve extra context for the UI
+
+// The inbox isn’t just about messages. It’s a summary view of the relationship between user and doctor.
+// In your app, each conversation is actually an appointment — so you may want to show details like:
+
+// When the appointment was scheduled (date)
+
+// Whether it’s cancelled (cancelled)
+
+// Whether it’s completed (isCompleted)
+
+// Whether the payment was made (payment)
+
+// These details help the frontend display different visuals or statuses, for example:
+
+// A dimmed or grey row for cancelled appointments.
+
+// A “✔ Completed” badge for finished appointments.
+
+// A “💰 Payment Pending” label if unpaid.
+
+// Without meta, you’d have to make another API call just to get these details when rendering your inbox.
+
+// 2️⃣ Helps with sorting fallback
+
+// In your sort logic:
+
+// inbox.sort((a, b) => {
+//   const at = a.lastMessage?.timestamp || a.meta.date || 0;
+//   const bt = b.lastMessage?.timestamp || b.meta.date || 0;
+//   return bt - at;
+// });
+
+
+// If a conversation has no messages yet (like a newly booked appointment), it won’t have a lastMessage.timestamp.
+
+// ➡️ In that case, the code falls back to a.meta.date, meaning:
+
+// “If there’s no chat yet, sort by appointment date instead.”
+
+// That’s why storing the appointment date inside meta is very convenient — you can easily access it when sorting or filtering without fetching appointments again.
+
+// 3️⃣ Keeps structure clean and organized
+
+// You could technically put date, cancelled, isCompleted, and payment directly in the top-level object:
+
+// return {
+//   appointmentId: ...,
+//   doctor: {...},
+//   lastMessage: {...},
+//   unreadCount,
+//   date: app.date,
+//   cancelled: app.cancelled,
+//   ...
+// };
+
+
+// But that clutters the response.
+
+// Grouping these under meta keeps your JSON structured and readable:
+
+// Top-level: conversation-level data (doctor, messages, unread count)
+
+// Inside meta: appointment-related data (status and scheduling)
+
+// Think of it like having sections:
+
+// conversation info
+// ├── doctor
+// ├── lastMessage
+// ├── unreadCount
+// └── meta → all appointment-level details
+
+
+// This also makes your API extensible — you can later add more appointment-related info (like location, fee, or notes) without polluting the main object.
+
+// 4️⃣ Future flexibility (filters and analytics)
+
+// By including metadata in the inbox:
+
+// You can later filter inbox items client-side:
+
+// Show only “Upcoming” appointments (future date)
+
+// Hide “Cancelled” ones
+
+// Show only “Paid” or “Completed” chats
+
+// You can even compute quick analytics like:
+
+// “How many completed appointments had unread messages?”
+
+// “Which doctors are most active recently?”
+
+// That’s all possible because the inbox items already carry meta context — no extra queries needed.

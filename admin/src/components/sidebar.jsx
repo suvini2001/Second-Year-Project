@@ -59,6 +59,7 @@ const sidebar = () => {
             <img src={assets.home_icon} alt="" className="w-6 h-6" />
             <p className="text-blue-900 font-semibold">DashBoard</p>
           </NavLink>
+
           <NavLink
             to={"/doctor-appointments"}
             className="flex items-center gap-3 p-3 rounded-lg border-2 border-blue-300 shadow-md transition-all duration-200 bg-blue-200 hover:bg-blue-300 hover:shadow-xl hover:scale-105 cursor-pointer"
@@ -66,6 +67,15 @@ const sidebar = () => {
           >
             <img src={assets.appointment_icon} alt="" className="w-6 h-6" />
             <p className="text-blue-900 font-semibold">Appointment</p>
+          </NavLink>
+
+          <NavLink
+            to={"/Messages"}
+            className="flex items-center gap-3 p-3 rounded-lg border-2 border-blue-300 shadow-md transition-all duration-200 bg-blue-200 hover:bg-blue-300 hover:shadow-xl hover:scale-105 cursor-pointer"
+            style={{ textDecoration: "none" }}
+          >
+            <img src={assets.chat_icon} alt="" className="w-6 h-6" />
+            <p className="text-blue-900 font-semibold">Messages</p>
           </NavLink>
           
           <NavLink

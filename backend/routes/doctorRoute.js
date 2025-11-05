@@ -1,5 +1,5 @@
 import express from 'express'
-import { doctorList,loginDoctor,appointmentsDoctor,appointmentCancel,appointmentComplete,doctorDashboard,doctorProfile,updateDoctorProfile,getUnreadMessagesCount } from '../controllers/doctorController.js'
+import { doctorList,loginDoctor,appointmentsDoctor,appointmentCancel,appointmentComplete,doctorDashboard,doctorProfile,updateDoctorProfile,getUnreadMessagesCount,getDoctorInbox } from '../controllers/doctorController.js'
 import authDoctor from '../middleware/authDoctor.js'
 import { getMessages } from '../controllers/messageController.js';
  
@@ -17,4 +17,5 @@ doctorRouter.get('/profile', authDoctor,doctorProfile)
 doctorRouter.post('/update-profile', authDoctor,updateDoctorProfile)
 doctorRouter.get('/messages/:appointmentId', authDoctor, getMessages);
 doctorRouter.get('/unread-messages',authDoctor,getUnreadMessagesCount);
+doctorRouter.get('/inbox',authDoctor,getDoctorInbox)
  export default doctorRouter

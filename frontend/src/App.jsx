@@ -6,6 +6,7 @@ import Doctors from "./pages/Doctors"
 import Login from "./pages/Login"
 import About from "./pages/About"
 import Contact from "./pages/Contact"
+import Messages from "./pages/Messages"
 import MyProfile from "./pages/MyProfile"
 import MyAppointments from "./pages/MyAppointments"
 import Appointment from "./pages/Appointment"
@@ -32,6 +33,8 @@ const App = () => {
         <Route path="/mock-payment/:appointmentId" element={<MockPayment />} />
         <Route path="/user-chat/:appointmentId" element={<UserChatPage />} />
         <Route path="/chat/:appointmentId" element={<UserChatPage />} />
+        <Route path="/Messages" element={<Messages />} />
+  
       </Routes>
       <Footer />
       

@@ -16,6 +16,7 @@ import DoctorDashboard from "./pages/Doctor/DoctorDashboard.jsx";
 import DoctorApointment from "./pages/Doctor/DoctorApointment.jsx";
 import DoctorProfile from "./pages/Doctor/DoctorProfile.jsx";
 import DoctorChatPage from "./pages/Doctor/DoctorChatPage.jsx";
+import DoctorMessages from "./pages/Doctor/Messages.jsx";
 
 
 import { useLocation } from "react-router-dom";
@@ -47,6 +48,7 @@ const App = () => {
             <Route path='/doctor-dashboard' element={<DoctorDashboard />} />
             <Route path='/doctor-appointments' element={<DoctorApointment />} />
             <Route path='/doctor-profile' element={<DoctorProfile />} />
+            <Route path='/Messages' element={<DoctorMessages />} />
           </Routes>
         </div>
       </div>
