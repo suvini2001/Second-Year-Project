@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 import { v2 as cloudinary } from "cloudinary";
 import Doctor from "../models/doctorModel.js";
 import jwt from "jsonwebtoken";
-import appointmentModel from "../models/apointmentModel.js";
+import appointmentModel from "../models/appointmentModel.js";
 import User from "../models/userModel.js";
 
 // API for adding a doctor
