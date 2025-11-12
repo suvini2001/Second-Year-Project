@@ -71,14 +71,44 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
     socketRef.current.on('receive-message', (message) => {
       // Merge with any optimistic entry by clientMessageId to avoid duplicates
       setMessages(prev => upsertMessage(prev, message));
+      // If we just received an incoming message (from doctor) while chat is open, mark it read immediately
+      try {
+        if (message?.senderType && message.senderType !== 'user') {
+          socketRef.current.emit('messages-read', { appointmentId });
+        }
+      } catch (_) {}
+    });
+
+    // Listen for read receipts to flip ticks on outgoing (user) messages
+    socketRef.current.on('messages-read', (evt) => {
+      try {
+        if (!evt || evt.appointmentId !== appointmentId) return;
+        // If the other side (doctor) read messages, mark our outgoing as read
+        if (evt.by !== 'user') {
+          setMessages(prev => prev.map(m =>
+            m.senderType === 'user' && !m.readAt
+              ? { ...m, readAt: evt.readAt, localStatus: 'read' }
+              : m
+          ));
+        }
+      } catch (_) {}
     });
 
     // 4️⃣ Load all previously stored messages for this appointment
     loadMessages();
 
+    // Tell server the chat is focused/visible so it can mark reads immediately
+    socketRef.current.emit('messages-read', { appointmentId });
+
+    const onFocus = () => {
+      try { socketRef.current?.emit('messages-read', { appointmentId }); } catch (_) {}
+    };
+    window.addEventListener('focus', onFocus);
+
     // 5️⃣ Cleanup function → disconnect socket when component unmounts or appointment changes
     return () => {
       socketRef.current.disconnect();
+      window.removeEventListener('focus', onFocus);
     };
   }, [appointmentId]); // Re-run effect only if appointmentId changes
 
@@ -145,10 +175,11 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
   // Status indicator for current user's messages
   const renderStatus = (msg) => {
     if (msg.senderType !== 'user') return null; // Only show on outgoing messages
-    const status = msg.localStatus || (msg.readAt ? 'read' : 'sent');
+    // Prioritize readAt so ✓✓ appears instantly when available
+    if (msg.readAt) return <span className="ml-2 text-blue-600">✓✓</span>;
+    const status = msg.localStatus || 'sent';
     if (status === 'sending') return <span className="ml-2 text-gray-400">✓</span>;
     if (status === 'error') return <span className="ml-2 text-red-500" title="Failed to send">!</span>;
-    if (status === 'read') return <span className="ml-2 text-blue-600">✓✓</span>;
     return <span className="ml-2 text-gray-700">✓</span>; // sent
   };
 

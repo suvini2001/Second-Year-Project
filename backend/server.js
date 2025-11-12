@@ -29,6 +29,9 @@ const io = new Server(server, {
   },
 });
 
+// Expose io for controllers that need to emit outside socket handlers (e.g., after REST reads)
+global.io = io;
+
 // Socket.IO authentication middleware
 
 // This code is a Socket.IO authentication middleware that verifies a user’s identity before allowing a WebSocket connection.
@@ -163,6 +166,60 @@ io.on("connection", (socket) => {
       return reply({ ok: true, message: msgObj });
     } catch (unexpected) {
       console.error("send-message unexpected error:", unexpected);
+      return reply({ ok: false, error: "Unexpected error" });
+    }
+  });
+
+  // Optional: Explicit "messages-read" event so UIs can flip to ✓✓ immediately
+  // Client emits when chat is brought to foreground/focused
+  socket.on("messages-read", async (data = {}, ack) => {
+    const reply = (payload) => {
+      try {
+        if (typeof ack === "function") ack(payload);
+      } catch (_) {}
+    };
+
+    //Extract and validate appointmentId
+    try {
+      const { appointmentId } = data;
+      if (!appointmentId || typeof appointmentId !== "string") {
+        return reply({ ok: false, error: "Invalid appointmentId" });
+      }
+
+      // Verify participation in the appointment//Fetch the appointment from the database
+      let appt;
+      try {
+        appt = await appointmentModel.findById(appointmentId).lean();
+      } catch (e) {
+        return reply({ ok: false, error: "Invalid appointment reference" });
+      }
+      if (!appt) return reply({ ok: false, error: "Appointment not found" });
+      //Check if the socket user belongs to this appointment
+      const isParticipant =
+        (socket.userType === "user" && String(appt.userId) === String(socket.userId)) ||
+        (socket.userType === "doctor" && String(appt.docId) === String(socket.userId));
+      if (!isParticipant) return reply({ ok: false, error: "Unauthorized" });
+
+      const readAt = new Date();
+      const opposite = socket.userType === "user" ? "doctor" : "user";
+      // Mark all unread messages sent by the opposite side as read
+
+      //Update unread messages in the database
+      await messageModel.updateMany(
+        { appointmentId, senderType: opposite, isRead: false },
+        { $set: { isRead: true, readAt } }
+      );
+
+      // Notify both sides so senders can flip their ticks instantly
+      const payload = { appointmentId, by: socket.userType, readAt };
+      io.to(`appointment-${appointmentId}`).emit("messages-read", payload);
+      
+      //Acknowledge success back to requester
+      return reply({ ok: true });
+
+      //Handle unexpected server errors
+    } catch (err) {
+      console.error("messages-read error:", err);
       return reply({ ok: false, error: "Unexpected error" });
     }
   });

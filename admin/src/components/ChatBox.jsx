@@ -41,14 +41,43 @@ const ChatBox = ({ appointmentId, patientName }) => {
       
     // Listen for messages  
     socketRef.current.on('receive-message', (message) => {  
-      setMessages(prev => upsertMessage(prev, message));  
+      setMessages(prev => upsertMessage(prev, message));
+      // If we just received an incoming message while chat is open, mark it read immediately
+      try {
+        if (message?.senderType && message.senderType !== 'doctor') {
+          socketRef.current.emit('messages-read', { appointmentId });
+        }
+      } catch (_) {}
     });  
+    // Listen for read-receipts to flip ticks on outgoing (doctor) messages
+    socketRef.current.on('messages-read', (evt) => {
+      try {
+        if (!evt || evt.appointmentId !== appointmentId) return;
+        // If the other side read messages, mark our outgoing messages as read
+        if (evt.by !== 'doctor') {
+          setMessages(prev => prev.map(m =>
+            m.senderType === 'doctor' && !m.readAt
+              ? { ...m, readAt: evt.readAt, localStatus: 'read' }
+              : m
+          ));
+        }
+      } catch (_) {}
+    });
       
     // Load existing messages  
     loadMessages();  
+
+    // Immediately tell server this chat is in focus to mark reads without waiting for fetch
+    socketRef.current.emit('messages-read', { appointmentId });
+
+    const onFocus = () => {
+      try { socketRef.current?.emit('messages-read', { appointmentId }); } catch (_) {}
+    };
+    window.addEventListener('focus', onFocus);
       
     return () => {  
       socketRef.current.disconnect();  
+      window.removeEventListener('focus', onFocus);
     };  
   }, [appointmentId, dToken]);  
     
@@ -104,10 +133,11 @@ const ChatBox = ({ appointmentId, patientName }) => {
   
   const renderStatus = (msg) => {
     if (msg.senderType !== 'doctor') return null;
-    const status = msg.localStatus || (msg.readAt ? 'read' : 'sent');
+    // Prefer readAt over localStatus so ✓✓ shows immediately when read
+    if (msg.readAt) return <span className="ml-2 text-white">✓✓</span>;
+    const status = msg.localStatus || 'sent';
     if (status === 'sending') return <span className="ml-2 text-gray-200">✓</span>;
     if (status === 'error') return <span className="ml-2 text-red-300" title="Failed to send">!</span>;
-    if (status === 'read') return <span className="ml-2 text-white">✓✓</span>;
     return <span className="ml-2 text-white">✓</span>;
   };
     

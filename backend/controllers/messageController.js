@@ -17,12 +17,26 @@ const getMessages = async (req, res) => {
       return res.json({ success: false, message: 'Unauthorized' });  
     }  
 
-    // Mark messages as read
+    // Mark messages as read (add readAt timestamp) and broadcast a read receipt
     const recipientType = userType === 'user' ? 'doctor' : 'user';
+    const readAt = new Date();
     await messageModel.updateMany(
       { appointmentId: appointmentId, senderType: recipientType, isRead: false },
-      { $set: { isRead: true } }
+      { $set: { isRead: true, readAt } }
     );
+    // Emit to appointment room so the sender flips to ✓✓ immediately
+    try {
+      if (global.io) {
+        global.io.to(`appointment-${appointmentId}`).emit('messages-read', {
+          appointmentId,
+          by: userType,
+          readAt,
+        });
+      }
+    } catch (emitErr) {
+      // non-fatal
+      console.error('Failed to emit messages-read from getMessages:', emitErr?.message || emitErr);
+    }
     
     //If authorization passes, it retrieves all messages from the database where appointmentId matches.
     const messages = await messageModel.find({ appointmentId }).sort({ timestamp: 1 });  
