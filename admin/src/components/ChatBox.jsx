@@ -6,8 +6,12 @@ import axios from 'axios';
 const ChatBox = ({ appointmentId, patientName }) => {  
   const { dToken, backendUrl } = useContext(DoctorContext);  
   const [messages, setMessages] = useState([]);  
+  const [hasMore, setHasMore] = useState(false);
+  const [cursor, setCursor] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [newMessage, setNewMessage] = useState('');  
   const socketRef = useRef(null);  
+  const listRef = useRef(null);
   
   // Helpers
   const generateClientMessageId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -48,6 +52,17 @@ const ChatBox = ({ appointmentId, patientName }) => {
           socketRef.current.emit('messages-read', { appointmentId });
         }
       } catch (_) {}
+
+      // Auto-scroll only for live messages if near bottom or if outgoing (doctor)
+      try {
+        const el = listRef.current;
+        if (el) {
+          const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+          if (message?.senderType === 'doctor' || nearBottom) {
+            el.scrollTop = el.scrollHeight;
+          }
+        }
+      } catch (_) {}
     });  
     // Listen for read-receipts to flip ticks on outgoing (doctor) messages
     socketRef.current.on('messages-read', (evt) => {
@@ -64,8 +79,8 @@ const ChatBox = ({ appointmentId, patientName }) => {
       } catch (_) {}
     });
       
-    // Load existing messages  
-    loadMessages();  
+    // Load recent messages (paginated)
+    loadInitialMessages();  
 
     // Immediately tell server this chat is in focus to mark reads without waiting for fetch
     socketRef.current.emit('messages-read', { appointmentId });
@@ -81,18 +96,72 @@ const ChatBox = ({ appointmentId, patientName }) => {
     };  
   }, [appointmentId, dToken]);  
     
-  const loadMessages = async () => {  
-    try {  
-      const { data } = await axios.get(`${backendUrl}/api/doctor/messages/${appointmentId}`, {  
-        headers: { dToken }  
-      });  
-      if (data.success) {  
-        setMessages(data.messages);  
-      }  
-    } catch (error) {  
-      console.error(error);  
-    }  
-  };  
+  const loadInitialMessages = async () => {
+    try {
+      setLoading(true);
+      const { data } = await axios.get(`${backendUrl}/api/doctor/messages/${appointmentId}`, {
+        headers: { dToken },
+        params: { limit: 50 }
+      });
+      if (data?.success) {
+        const desc = Array.isArray(data.messages) ? data.messages : [];
+        const asc = [...desc].reverse();
+        setMessages(asc);
+        setCursor(data.cursor || null);
+        setHasMore(!!data.hasMore);
+        requestAnimationFrame(() => {
+          try {
+            if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+          } catch (_) {}
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load messages:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadOlderMessages = async () => {
+    if (!hasMore || loading) return;
+    try {
+      setLoading(true);
+      const prevHeight = listRef.current?.scrollHeight || 0;
+      const params = { limit: 50 };
+      if (cursor?.before) params.before = cursor.before; else if (cursor?.id) params.before = cursor.id;
+      const { data } = await axios.get(`${backendUrl}/api/doctor/messages/${appointmentId}`, {
+        headers: { dToken },
+        params
+      });
+      if (data?.success) {
+        const olderDesc = Array.isArray(data.messages) ? data.messages : [];
+        const olderAsc = [...olderDesc].reverse();
+        setMessages(prev => {
+          const seen = new Set();
+          const key = (m) => m._id || m.clientMessageId || `${m.timestamp}-${m.message}`;
+          const merged = [...olderAsc, ...prev].filter((m) => {
+            const k = key(m);
+            if (seen.has(k)) return false;
+            seen.add(k);
+            return true;
+          });
+          return merged;
+        });
+        setCursor(data.cursor || cursor);
+        setHasMore(!!data.hasMore);
+        requestAnimationFrame(() => {
+          try {
+            const now = listRef.current?.scrollHeight || 0;
+            if (listRef.current) listRef.current.scrollTop = now - prevHeight;
+          } catch (_) {}
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load older messages:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
     
   const sendMessage = () => {  
     if (!newMessage.trim()) return;  
@@ -145,7 +214,7 @@ const ChatBox = ({ appointmentId, patientName }) => {
     <div className="border rounded-lg p-4 bg-white shadow-md">  
       <h3 className="font-semibold mb-4 text-blue-900">Chat with {patientName}</h3>  
         
-      <div className="flex flex-col h-96 overflow-y-auto mb-4 space-y-4 bg-gray-50 p-4 rounded-lg">
+      <div ref={listRef} onScroll={(e) => { if (e.currentTarget.scrollTop <= 10) loadOlderMessages(); }} className="flex flex-col h-96 overflow-y-auto mb-4 space-y-4 bg-gray-50 p-4 rounded-lg">
         {messages.map((msg, idx) => (
           <div
             key={msg._id || msg.clientMessageId || idx}

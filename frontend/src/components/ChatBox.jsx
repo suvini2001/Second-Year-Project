@@ -12,10 +12,14 @@ const ChatBox = ({ appointmentId, doctorName }) => {
   // messages → stores all chat messages
   // newMessage → stores the text currently typed by the user
   const [messages, setMessages] = useState([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [cursor, setCursor] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [newMessage, setNewMessage] = useState('');
 
   // useRef is used to hold the socket instance (so it doesn't reinitialize every render)
   const socketRef = useRef(null);
+  const listRef = useRef(null);
 
   // Small helpers to generate IDs and merge messages safely
 
@@ -77,6 +81,18 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
           socketRef.current.emit('messages-read', { appointmentId });
         }
       } catch (_) {}
+
+      // Auto-scroll only for new live messages if we're near the bottom
+      try {
+        const el = listRef.current;
+        if (el) {
+          const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+          // Always scroll for our own outgoing messages
+          if (message?.senderType === 'user' || nearBottom) {
+            el.scrollTop = el.scrollHeight;
+          }
+        }
+      } catch (_) {}
     });
 
     // Listen for read receipts to flip ticks on outgoing (user) messages
@@ -94,8 +110,8 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
       } catch (_) {}
     });
 
-    // 4️⃣ Load all previously stored messages for this appointment
-    loadMessages();
+    // 4️⃣ Load recent messages (paginated)
+    loadInitialMessages();
 
     // Tell server the chat is focused/visible so it can mark reads immediately
     socketRef.current.emit('messages-read', { appointmentId });
@@ -112,20 +128,78 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
     };
   }, [appointmentId]); // Re-run effect only if appointmentId changes
 
-  // Function to load old chat messages from the database via backend API
-  const loadMessages = async () => {
+  // Initial fetch: recent N messages (ASC in UI)
+  const loadInitialMessages = async () => {
     try {
-      // Send GET request to the server for the appointment’s messages
+      setLoading(true);
       const { data } = await axios.get(`${backendUrl}/api/user/messages/${appointmentId}`, {
-        headers: { token }  // Include token in headers for backend authentication
+        headers: { token },
+        params: { limit: 50 }
       });
-
-      // If request successful, update message list
-      if (data.success) {
-        setMessages(data.messages);
+      if (data?.success) {
+        const desc = Array.isArray(data.messages) ? data.messages : [];
+        const asc = [...desc].reverse();
+        setMessages(asc);
+        setCursor(data.cursor || null);
+        setHasMore(!!data.hasMore);
+        // Scroll to bottom on initial load
+        requestAnimationFrame(() => {
+          try {
+            const el = listRef.current;
+            if (el) el.scrollTop = el.scrollHeight;
+          } catch (_) {}
+        });
       }
     } catch (error) {
-      console.error(error);  // Print any error if request fails
+      console.error('Failed to load messages:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load older messages when scrolled to top
+  const loadOlderMessages = async () => {
+    if (!hasMore || loading) return;
+    try {
+      setLoading(true);
+      const el = listRef.current;
+      const prevHeight = el ? el.scrollHeight : 0;
+      const params = { limit: 50 };
+      if (cursor?.before) params.before = cursor.before;
+      else if (cursor?.id) params.before = cursor.id;
+      const { data } = await axios.get(`${backendUrl}/api/user/messages/${appointmentId}`, {
+        headers: { token },
+        params
+      });
+      if (data?.success) {
+        const olderDesc = Array.isArray(data.messages) ? data.messages : [];
+        const olderAsc = [...olderDesc].reverse();
+        // Prepend older messages, dedup by _id/clientMessageId
+        setMessages(prev => {
+          const seen = new Set();
+          const key = (m) => m._id || m.clientMessageId || `${m.timestamp}-${m.message}`;
+          const merged = [...olderAsc, ...prev].filter((m) => {
+            const k = key(m);
+            if (seen.has(k)) return false;
+            seen.add(k);
+            return true;
+          });
+          return merged;
+        });
+        setCursor(data.cursor || cursor);
+        setHasMore(!!data.hasMore);
+        // Maintain scroll position (avoid jump)
+        requestAnimationFrame(() => {
+          try {
+            const now = listRef.current?.scrollHeight || 0;
+            if (listRef.current) listRef.current.scrollTop = now - prevHeight;
+          } catch (_) {}
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load older messages:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -184,13 +258,20 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
   };
 
   // JSX (UI part)
+  const onScroll = (e) => {
+    const el = e.currentTarget;
+    if (el.scrollTop <= 10) {
+      loadOlderMessages();
+    }
+  };
+
   return (
     <div className="border rounded-lg p-4">
       {/* Chat header showing doctor's name */}
       <h3 className="font-semibold mb-4">Chat with Dr. {doctorName}</h3>
 
       {/* Message display area */}
-      <div className="h-96 overflow-y-auto mb-4 space-y-2">
+      <div ref={listRef} onScroll={onScroll} className="h-96 overflow-y-auto mb-4 space-y-2">
         {messages.map((msg, idx) => (
           // Each message bubble (style depends on who sent it)
           <div
