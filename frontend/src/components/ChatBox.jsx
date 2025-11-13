@@ -116,10 +116,13 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
     // Tell server the chat is focused/visible so it can mark reads immediately
     socketRef.current.emit('messages-read', { appointmentId });
 
+    //his ensures that if the user switches to another tab and comes back, unread messages are marked read immediately.
     const onFocus = () => {
       try { socketRef.current?.emit('messages-read', { appointmentId }); } catch (_) {}
     };
-    window.addEventListener('focus', onFocus);
+    window.addEventListener('focus', onFocus);  //Then we attach this function to the focus event of the window, so it triggers automatically when the user returns to the tab.
+
+
 
     // 5️⃣ Cleanup function → disconnect socket when component unmounts or appointment changes
     return () => {
@@ -136,12 +139,14 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
         headers: { token },
         params: { limit: 50 }
       });
-      if (data?.success) {
+      if (data?.success) {  //desc is the array of messages from newest to oldest (server might return descending order).
         const desc = Array.isArray(data.messages) ? data.messages : [];
         const asc = [...desc].reverse();
         setMessages(asc);
-        setCursor(data.cursor || null);
-        setHasMore(!!data.hasMore);
+        setCursor(data.cursor || null); //keeps track of pagination cursor for loading older messages.
+        setHasMore(!!data.hasMore); //true/false if more messages exist.
+
+
         // Scroll to bottom on initial load
         requestAnimationFrame(() => {
           try {
@@ -157,16 +162,30 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
     }
   };
 
+
+
+// Load latest messages on component mount.
+// Emit messages-read when chat is focused or tab is active.
+// Infinite scroll for older messages.
+// Deduplication to prevent repeated messages.
+// Scroll management to keep view stable.
+// Cleanup on unmount to prevent leaks.  
+
   // Load older messages when scrolled to top
   const loadOlderMessages = async () => {
     if (!hasMore || loading) return;
     try {
+
+      //Saves the current scroll height before loading older messages.
       setLoading(true);
       const el = listRef.current;
       const prevHeight = el ? el.scrollHeight : 0;
+
       const params = { limit: 50 };
-      if (cursor?.before) params.before = cursor.before;
+      if (cursor?.before) params.before = cursor.before; //cursor → tells the server to return messages older than a certain ID or timestamp.
       else if (cursor?.id) params.before = cursor.id;
+
+      // Fetch older messages from the server
       const { data } = await axios.get(`${backendUrl}/api/user/messages/${appointmentId}`, {
         headers: { token },
         params
@@ -202,6 +221,8 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
       setLoading(false);
     }
   };
+
+
 
   // Function to send a new message to the server (with optimistic UI + ack)
   const sendMessage = () => {

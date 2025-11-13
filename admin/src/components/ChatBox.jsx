@@ -55,10 +55,13 @@ const ChatBox = ({ appointmentId, patientName }) => {
 
       // Auto-scroll only for live messages if near bottom or if outgoing (doctor)
       try {
-        const el = listRef.current;
+        const el = listRef.current; //gives access to the actual DOM element of that container.
         if (el) {
-          const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-          if (message?.senderType === 'doctor' || nearBottom) {
+          const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40; //pixels from the bottom
+          //scrollHeight -->Total height of the scrollable content (all messages combined)
+          //scrollTop -->How far the user has scrolled from the top
+          //clientHeight -->Visible height of the container
+          if (message?.senderType === 'doctor' || nearBottom) { //When the message is sent by the doctor or When the user is already near the bottom
             el.scrollTop = el.scrollHeight;
           }
         }
@@ -177,8 +180,15 @@ const ChatBox = ({ appointmentId, patientName }) => {
       localStatus: 'sending',
     };
 
-    // Add optimistic message to UI immediately
+    // Add optimistic message to UI immediately and scroll to bottom
     setMessages(prev => [...prev, optimistic]);
+    try {
+      requestAnimationFrame(() => {
+        if (listRef.current) {
+          listRef.current.scrollTop = listRef.current.scrollHeight;
+        }
+      });
+    } catch (_) {}
 
     socketRef.current.emit(  //a websocket emit with acknowledgement callback //emit-->sends an event through that socket.
       'send-message',
