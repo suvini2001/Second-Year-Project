@@ -7,7 +7,7 @@ const messageSchema = new mongoose.Schema({
 //  appointment, preventing unauthorized conversations between patients and doctors who don't have a booking relationship.
   senderId: { type: mongoose.Schema.Types.ObjectId, required: true },  
   senderType: { type: String, enum: ['user', 'doctor'], required: true },  
-  message: { type: String, required: true },  
+  message: { type: String, required: true, trim: true, maxlength: 2000 },  
   timestamp: { type: Date, default: Date.now },  
   isRead: { type: Boolean, default: false }  ,
   clientMessageId: { type: String, index: true },

@@ -51,6 +51,58 @@ io.use((socket, next) => {
   }
 });
 
+// Message validation and moderation settings
+const MAX_MESSAGE_LENGTH = Number.parseInt(process.env.MAX_MESSAGE_LENGTH || '2000', 10);
+const BASIC_MODERATION_ENABLED = String(process.env.BASIC_MODERATION_ENABLED || 'true').toLowerCase() === 'true';
+const RATE_LIMIT_WINDOW_MS = Number.parseInt(process.env.SEND_RATE_WINDOW_MS || '10000', 10); // 10 seconds
+const RATE_LIMIT_MAX = Number.parseInt(process.env.SEND_RATE_MAX || '20', 10); // 20 msgs / window per appointment per sender
+
+// Very basic moderation hook (optional). Replace with a real service if needed.
+function basicModeration(text) {
+  if (!BASIC_MODERATION_ENABLED) return { allowed: true }; //below things are runs only moderation is true
+  const lowered = text.toLowerCase();
+  // Naive blocklist example; extend/replace with proper service
+  const banned = [
+    'spamlink.example',
+    'kill',
+    'die',
+  ];
+  if (banned.some(w => lowered.includes(w))) {
+    return { allowed: false, reason: 'Message contains disallowed content' };
+  }
+  // Block excessive character runs (very naive)
+  // basically checks any character is repeated for more than 20 times
+  if (/(.)\1{20,}/.test(text)) {
+    return { allowed: false, reason: 'Message looks like spam' };
+  }
+  return { allowed: true };
+}
+
+// Simple in-memory sliding window rate limiter (per appointment + sender)
+const rateBuckets = new Map(); // key -> number[] of timestamps (ms)
+function checkRateLimit(key) { // keep track of how many request a person makes within fixed time of windows.
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;  // only allowed to reqest made with in that time
+  const arr = rateBuckets.get(key) || [];
+  // Keep only events in window
+  const recent = arr.filter((t) => t >= windowStart); // keep only the recent request that matters
+  recent.push(now);
+  rateBuckets.set(key, recent); //save the updated timestamp list back to the map-->So now we know how many requests the user has made in the current window.
+
+  // rate limit checks
+  if (recent.length > RATE_LIMIT_MAX) {
+    // Compute time until oldest event leaves the window
+    const oldest = recent[0];
+    const retryAfterMs = RATE_LIMIT_WINDOW_MS - (now - oldest); //ow many milliseconds until that oldest request "falls out" of the window.
+    return { limited: true, retryAfterSec: Math.max(1, Math.ceil(retryAfterMs / 1000)) };
+
+    //limited: true → user is blocked
+    // retryAfterSec → how many seconds to wait before trying again
+
+  }
+  return { limited: false }; //If user is safe:
+}
+
 // Socket.IO connection handling
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.userId}`);
@@ -83,12 +135,26 @@ io.on("connection", (socket) => {
       if (!appointmentId || typeof appointmentId !== "string") {
         return reply({ ok: false, error: "Invalid appointmentId" });
       }
-      if (
-        !message ||
-        typeof message !== "string" ||
-        message.trim().length === 0
-      ) {
-        return reply({ ok: false, error: "Message text is required" });
+      if (typeof message !== "string") {
+        return reply({ ok: false, error: "Message must be a string" });
+      }
+      const trimmed = message.trim();
+      if (trimmed.length === 0) {
+        return reply({ ok: false, error: "Message cannot be empty" });
+      }
+      if (trimmed.length > MAX_MESSAGE_LENGTH) {
+        return reply({ ok: false, error: `Message too long (max ${MAX_MESSAGE_LENGTH} characters)` });
+      }
+      const mod = basicModeration(trimmed);
+      if (!mod.allowed) {
+        return reply({ ok: false, error: mod.reason || 'Message rejected by moderation' });
+      }
+
+      // 2.5) Per-appointment + sender rate limiting
+      const rlKey = `${appointmentId}:${socket.userId}`;
+      const rl = checkRateLimit(rlKey);
+      if (rl.limited) {
+        return reply({ ok: false, error: `Rate limit exceeded. Try again in ${rl.retryAfterSec}s` });
       }
 
       // 2) Verify appointment exists and socket user participates in it--Authorization
@@ -118,7 +184,7 @@ io.on("connection", (socket) => {
           appointmentId,
           senderId: socket.userId,
           senderType: socket.userType,
-          message,
+          message: trimmed,
           ...(clientMessageId ? { clientMessageId } : {}),
         });
         savedMessage = await newMessage.save();
@@ -278,3 +344,7 @@ app.get("/", (req, res) => {
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+
+//basic moderation
+//checks a message to prevent bad words,obvious spam,repeated characters,harmful or inappropriate content

@@ -65,7 +65,9 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
   useEffect(() => {
     // 1️⃣ Initialize socket connection to backend
     socketRef.current = io(backendUrl, {
-      auth: { token }  // Send JWT token for authentication (handled in backend middleware)
+      path: '/socket.io/',
+      auth: { token },  // Send JWT token for authentication (handled in backend middleware)
+      transports: ['websocket']
     });
 
     // 2️⃣ Join a specific chat room related to this appointment

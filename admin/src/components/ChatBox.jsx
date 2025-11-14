@@ -37,7 +37,9 @@ const ChatBox = ({ appointmentId, patientName }) => {
       
     // Initialize socket connection with doctor token  
     socketRef.current = io(backendUrl, {  
-      auth: { token: dToken }  
+      path: '/socket.io/',
+      auth: { token: dToken },
+      transports: ['websocket']
     });  
       
     // Join appointment room  
@@ -103,7 +105,7 @@ const ChatBox = ({ appointmentId, patientName }) => {
     try {
       setLoading(true);
       const { data } = await axios.get(`${backendUrl}/api/doctor/messages/${appointmentId}`, {
-        headers: { dToken },
+        headers: { dtoken: dToken },
         params: { limit: 50 }
       });
       if (data?.success) {
@@ -133,7 +135,7 @@ const ChatBox = ({ appointmentId, patientName }) => {
       const params = { limit: 50 };
       if (cursor?.before) params.before = cursor.before; else if (cursor?.id) params.before = cursor.id;
       const { data } = await axios.get(`${backendUrl}/api/doctor/messages/${appointmentId}`, {
-        headers: { dToken },
+        headers: { dtoken: dToken },
         params
       });
       if (data?.success) {
