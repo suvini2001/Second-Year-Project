@@ -61,3 +61,23 @@ socket.emit('send-message', { appointmentId, message, clientMessageId }, (ack) =
 - `BASIC_MODERATION_ENABLED` (`true` | `false`, default `false`)
 - `SEND_RATE_MAX` (default `20`)
 - `SEND_RATE_WINDOW_MS` (default `10000`)
+
+## Read Receipts (✓✓)
+- REST fetch marks opposite-side unread messages as read for that appointment and sets `readAt`.
+- Socket event `messages-read` is also supported so UIs can flip ticks immediately when chat is focused, without waiting for fetch.
+
+Server emits:
+```js
+io.to(`appointment-${appointmentId}`).emit('messages-read', { appointmentId, by, readAt })
+```
+
+Client should emit on focus/visibility:
+```js
+socket.emit('messages-read', { appointmentId })
+```
+
+## Pagination API
+- Endpoint (user): `GET /api/user/messages/:appointmentId?before=ISO_OR_ID&limit=50`
+- Endpoint (doctor): `GET /api/doctor/messages/:appointmentId?before=ISO_OR_ID&limit=50`
+- Sort: newest → oldest; returns `messages` array, `cursor` with `{ before, id }`, and `hasMore`.
+- Frontend should show messages ASC and load older pages on scroll-top, maintaining scroll position.

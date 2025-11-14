@@ -7,7 +7,8 @@ import mongoose from 'mongoose';
 // Load messages in reverse chronological order (newest → oldest).
 // Paginate results (limit number of messages returned).
 // Support “load older messages” when scrolling up.
-// Not automatically mark messages as read
+// Not automatically mark messages as read (Socket event preferred),
+// but we also mark on fetch to satisfy "open chat flips to read" UX.
 
 const getMessages = async (req, res) => {  
   try {  
@@ -51,6 +52,25 @@ const getMessages = async (req, res) => {
       .sort({ timestamp: -1, _id: -1 }) //Sorts by timestamp descending (-1) so newest messages come first. _id: -1 ensures a deterministic order if timestamps are equal.
       .limit(limit)
       .lean();
+
+    // Mark opposite side's unread messages as read with timestamp (read receipt)
+    try {
+      const viewerType = req.userId ? 'user' : (req.docId ? 'doctor' : null);
+      if (viewerType) {
+        const opposite = viewerType === 'user' ? 'doctor' : 'user';
+        const readAt = new Date();
+        const result = await messageModel.updateMany(
+          { appointmentId, senderType: opposite, isRead: false },
+          { $set: { isRead: true, readAt } }
+        );
+        // If any messages were updated, notify sockets in this appointment room
+        if (result?.modifiedCount > 0 && global.io) {
+          try {
+            global.io.to(`appointment-${appointmentId}`).emit('messages-read', { appointmentId, by: viewerType, readAt });
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
 
     // Compute cursor and hasMore
     let cursor = null; //stores info about the oldest message in this batch.
