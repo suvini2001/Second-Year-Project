@@ -52,37 +52,42 @@ io.use((socket, next) => {
 });
 
 // Message validation and moderation settings
-const MAX_MESSAGE_LENGTH = Number.parseInt(process.env.MAX_MESSAGE_LENGTH || '2000', 10);
-const BASIC_MODERATION_ENABLED = String(process.env.BASIC_MODERATION_ENABLED || 'true').toLowerCase() === 'true';
-const RATE_LIMIT_WINDOW_MS = Number.parseInt(process.env.SEND_RATE_WINDOW_MS || '10000', 10); // 10 seconds
-const RATE_LIMIT_MAX = Number.parseInt(process.env.SEND_RATE_MAX || '20', 10); // 20 msgs / window per appointment per sender
+const MAX_MESSAGE_LENGTH = Number.parseInt(
+  process.env.MAX_MESSAGE_LENGTH || "2000",
+  10
+);
+const BASIC_MODERATION_ENABLED =
+  String(process.env.BASIC_MODERATION_ENABLED || "true").toLowerCase() ===
+  "true";
+const RATE_LIMIT_WINDOW_MS = Number.parseInt(
+  process.env.SEND_RATE_WINDOW_MS || "10000",
+  10
+); // 10 seconds
+const RATE_LIMIT_MAX = Number.parseInt(process.env.SEND_RATE_MAX || "20", 10); // 20 msgs / window per appointment per sender
 
 // Very basic moderation hook (optional). Replace with a real service if needed.
 function basicModeration(text) {
   if (!BASIC_MODERATION_ENABLED) return { allowed: true }; //below things are runs only moderation is true
   const lowered = text.toLowerCase();
   // Naive blocklist example; extend/replace with proper service
-  const banned = [
-    'spamlink.example',
-    'kill',
-    'die',
-  ];
-  if (banned.some(w => lowered.includes(w))) {
-    return { allowed: false, reason: 'Message contains disallowed content' };
+  const banned = ["spamlink.example", "kill", "die"];
+  if (banned.some((w) => lowered.includes(w))) {
+    return { allowed: false, reason: "Message contains disallowed content" };
   }
   // Block excessive character runs (very naive)
   // basically checks any character is repeated for more than 20 times
   if (/(.)\1{20,}/.test(text)) {
-    return { allowed: false, reason: 'Message looks like spam' };
+    return { allowed: false, reason: "Message looks like spam" };
   }
   return { allowed: true };
 }
 
 // Simple in-memory sliding window rate limiter (per appointment + sender)
 const rateBuckets = new Map(); // key -> number[] of timestamps (ms)
-function checkRateLimit(key) { // keep track of how many request a person makes within fixed time of windows.
+function checkRateLimit(key) {
+  // keep track of how many request a person makes within fixed time of windows.
   const now = Date.now();
-  const windowStart = now - RATE_LIMIT_WINDOW_MS;  // only allowed to reqest made with in that time
+  const windowStart = now - RATE_LIMIT_WINDOW_MS; // only allowed to reqest made with in that time
   const arr = rateBuckets.get(key) || [];
   // Keep only events in window
   const recent = arr.filter((t) => t >= windowStart); // keep only the recent request that matters
@@ -94,11 +99,13 @@ function checkRateLimit(key) { // keep track of how many request a person makes 
     // Compute time until oldest event leaves the window
     const oldest = recent[0];
     const retryAfterMs = RATE_LIMIT_WINDOW_MS - (now - oldest); //ow many milliseconds until that oldest request "falls out" of the window.
-    return { limited: true, retryAfterSec: Math.max(1, Math.ceil(retryAfterMs / 1000)) };
+    return {
+      limited: true,
+      retryAfterSec: Math.max(1, Math.ceil(retryAfterMs / 1000)),
+    };
 
     //limited: true → user is blocked
     // retryAfterSec → how many seconds to wait before trying again
-
   }
   return { limited: false }; //If user is safe:
 }
@@ -121,55 +128,125 @@ io.on("connection", (socket) => {
   // Handle incoming messages with acknowledgements and deduplication
   socket.on("send-message", async (data, ack) => {
     // safe ack helper so we don't crash if client didn't pass a function
-    const reply = (payload) => {  //checks if ack is actually a function before calling it (to avoid errors if the client didn’t pass one).
+    const reply = (payload) => {
+      //checks if ack is actually a function before calling it (to avoid errors if the client didn’t pass one).
       try {
         if (typeof ack === "function") ack(payload);
       } catch (_) {} //ensures that even if something goes wrong in the client’s ack, the server won’t crash.
     };
 
     try {
-      const { appointmentId, message, clientMessageId } = data || {};
+      const {
+        appointmentId,
+        message,
+        clientMessageId,
+        type,
+        url,
+        mimeType,
+        size,
+        filename,
+        thumbnailUrl,
+      } = data || {};
+
+      const t = type || "text"; // if type is provided it is type else the default is text
+      if (!appointmentId || typeof appointmentId !== "string")
+        return reply({ ok: false, error: "Invalid appointmentId" });
+
+      if (t === "text") {
+        if (
+          !message ||
+          typeof message !== "string" ||
+          message.trim().length === 0
+        ) {
+          return reply({ ok: false, error: "Message text is required" });
+        }
+      } else if (t === "image" || t === "file") {
+        if (!url || typeof url !== "string")
+          return reply({ ok: false, error: "File URL required" });
+        if (!mimeType || typeof mimeType !== "string")
+          return reply({ ok: false, error: "mimeType required" });
+
+        // enforce server-side size bounds; clients can lie
+        const maxBytes = t === "image" ? 5 * 1024 * 1024 : 20 * 1024 * 1024;
+        if (size && Number(size) > maxBytes)
+          return reply({ ok: false, error: "File too large" });
+      } else {
+        return reply({ ok: false, error: "Unsupported message type" });
+      }
 
       //Prevents wasted DB work and gives the client immediate actionable errors.
-      // 1) Validate payload
+      // 1) Validate payload (text vs file/image have different rules)
       if (!appointmentId || typeof appointmentId !== "string") {
         return reply({ ok: false, error: "Invalid appointmentId" });
       }
-      if (typeof message !== "string") {
-        return reply({ ok: false, error: "Message must be a string" });
-      }
-      const trimmed = message.trim();
-      if (trimmed.length === 0) {
-        return reply({ ok: false, error: "Message cannot be empty" });
-      }
-      if (trimmed.length > MAX_MESSAGE_LENGTH) {
-        return reply({ ok: false, error: `Message too long (max ${MAX_MESSAGE_LENGTH} characters)` });
-      }
-      const mod = basicModeration(trimmed);
-      if (!mod.allowed) {
-        return reply({ ok: false, error: mod.reason || 'Message rejected by moderation' });
+
+      if (t === "text") {
+        if (typeof message !== "string") {
+          return reply({ ok: false, error: "Message must be a string" });
+        }
+        const trimmed = message.trim();
+        if (trimmed.length === 0) {
+          return reply({ ok: false, error: "Message cannot be empty" });
+        }
+        if (trimmed.length > MAX_MESSAGE_LENGTH) {
+          return reply({
+            ok: false,
+            error: `Message too long (max ${MAX_MESSAGE_LENGTH} characters)`,
+          });
+        }
+        const mod = basicModeration(trimmed);
+        if (!mod.allowed) {
+          return reply({
+            ok: false,
+            error: mod.reason || "Message rejected by moderation",
+          });
+        }
+      } else if (t === "image" || t === "file") {
+        // Optional caption for files/images
+        if (typeof message === "string" && message.length > 0) {
+          const trimmed = message.trim();
+          if (trimmed.length > MAX_MESSAGE_LENGTH) {
+            return reply({
+              ok: false,
+              error: `Caption too long (max ${MAX_MESSAGE_LENGTH} characters)`,
+            });
+          }
+          const mod = basicModeration(trimmed);
+          if (!mod.allowed) {
+            return reply({
+              ok: false,
+              error: mod.reason || "Caption rejected by moderation",
+            });
+          }
+        }
       }
 
       // 2.5) Per-appointment + sender rate limiting
       const rlKey = `${appointmentId}:${socket.userId}`;
       const rl = checkRateLimit(rlKey);
       if (rl.limited) {
-        return reply({ ok: false, error: `Rate limit exceeded. Try again in ${rl.retryAfterSec}s` });
+        return reply({
+          ok: false,
+          error: `Rate limit exceeded. Try again in ${rl.retryAfterSec}s`,
+        });
       }
 
       // 2) Verify appointment exists and socket user participates in it--Authorization
       let appt;
       try {
-        appt = await appointmentModel.findById(appointmentId).lean();  // tries to find an apponiment in the DB - lean -->plain JS object not a mongoDB document which is faster when reading
+        appt = await appointmentModel.findById(appointmentId).lean(); // tries to find an apponiment in the DB - lean -->plain JS object not a mongoDB document which is faster when reading
       } catch (error) {
         return reply({ ok: false, error: "Invalid appointment reference" });
       }
       if (!appt) {
         return reply({ ok: false, error: "Appointment not found" });
       }
-      //check if the current appointment belongs either user or a doctor / this ensures only participants can send messages in that chat 
+      //check if the current appointment belongs either user or a doctor / this ensures only participants can send messages in that chat
       const isParticipant =
-        (socket.userType === "user" && String(appt.userId) === String(socket.userId)) || (socket.userType === "doctor" && String(appt.docId) === String(socket.userId));
+        (socket.userType === "user" &&
+          String(appt.userId) === String(socket.userId)) ||
+        (socket.userType === "doctor" &&
+          String(appt.docId) === String(socket.userId));
       if (!isParticipant) {
         return reply({
           ok: false,
@@ -178,13 +255,19 @@ io.on("connection", (socket) => {
       }
 
       // 3) Try to insert message (with optional clientMessageId for dedup)
-      let savedMessage;  // creates a new mesage document using messageModel
+      let savedMessage; // creates a new mesage document using messageModel
       try {
         const newMessage = new messageModel({
           appointmentId,
           senderId: socket.userId,
           senderType: socket.userType,
-          message: trimmed,
+          message: t === "text" ? message : (typeof message === "string" ? message : ""), // allow optional caption, default to empty string
+          type: t,
+          url: url || null,
+          mimeType: mimeType || null,
+          size: typeof size === "number" ? size : null,
+          filename: filename || null,
+          thumbnailUrl: thumbnailUrl || null,
           ...(clientMessageId ? { clientMessageId } : {}),
         });
         savedMessage = await newMessage.save();
@@ -210,8 +293,8 @@ io.on("connection", (socket) => {
 
       // Ensure we have a plain object for broadcasting/ack
       const msgObj =
-        typeof savedMessage?.toObject === "function"   //If true → it means savedMessage is a Mongoose document.//If false → it means it’s already a plain object (like if you got it using .lean() earlier).
-          ? savedMessage.toObject()    // hat converts the document into a plain JavaScript object.
+        typeof savedMessage?.toObject === "function" //If true → it means savedMessage is a Mongoose document.//If false → it means it’s already a plain object (like if you got it using .lean() earlier).
+          ? savedMessage.toObject() // hat converts the document into a plain JavaScript object.
           : savedMessage;
 
       // 4) Broadcast to appointment room (include clientMessageId if present)
@@ -262,8 +345,10 @@ io.on("connection", (socket) => {
       if (!appt) return reply({ ok: false, error: "Appointment not found" });
       //Check if the socket user belongs to this appointment
       const isParticipant =
-        (socket.userType === "user" && String(appt.userId) === String(socket.userId)) ||
-        (socket.userType === "doctor" && String(appt.docId) === String(socket.userId));
+        (socket.userType === "user" &&
+          String(appt.userId) === String(socket.userId)) ||
+        (socket.userType === "doctor" &&
+          String(appt.docId) === String(socket.userId));
       if (!isParticipant) return reply({ ok: false, error: "Unauthorized" });
 
       const readAt = new Date();
@@ -279,7 +364,7 @@ io.on("connection", (socket) => {
       // Notify both sides so senders can flip their ticks instantly
       const payload = { appointmentId, by: socket.userType, readAt };
       io.to(`appointment-${appointmentId}`).emit("messages-read", payload);
-      
+
       //Acknowledge success back to requester
       return reply({ ok: true });
 
@@ -344,7 +429,6 @@ app.get("/", (req, res) => {
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
 
 //basic moderation
 //checks a message to prevent bad words,obvious spam,repeated characters,harmful or inappropriate content

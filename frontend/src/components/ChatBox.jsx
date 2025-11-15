@@ -1,5 +1,6 @@
 // Import required React hooks and libraries
 import { useContext, useEffect, useState, useRef, useCallback } from 'react';
+import { FiPaperclip, FiImage, FiFile } from 'react-icons/fi';
 import { io } from 'socket.io-client';          // For real-time communication
 import { AppContext } from '../context/AppContext';  // Context to access global app variables (like token, backendUrl)
 import axios from 'axios';                     // For making HTTP requests
@@ -16,6 +17,9 @@ const ChatBox = ({ appointmentId, doctorName }) => {
   const [cursor, setCursor] = useState(null);
   const [loading, setLoading] = useState(false);
   const [newMessage, setNewMessage] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null); // for documents
+  const imageInputRef = useRef(null); // for images
 
   // useRef is used to hold the socket instance (so it doesn't reinitialize every render)
   const socketRef = useRef(null);
@@ -269,6 +273,82 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
     setNewMessage('');
   };
 
+  // File picker helpers
+  const openFilePicker = (kind = 'file') => {
+    if (kind === 'image') return imageInputRef.current?.click();
+    return fileInputRef.current?.click();
+  };
+  const onFileChange = async (e) => {
+    const file = e.target.files?.[0]; // first selected file
+    if (!file) return;
+    const IMAGE_MIMES = new Set(['image/jpeg','image/png','image/webp']);
+    const FILE_MIMES = new Set([
+      'application/pdf','text/plain','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ]);
+    const isImage = IMAGE_MIMES.has(file.type);
+    const isDoc = FILE_MIMES.has(file.type);
+    const type = isImage ? 'image' : (isDoc ? 'file' : null);
+    if (!type) {
+      alert('Unsupported file type');
+      return;
+    }
+    const maxBytes = isImage ? 5*1024*1024 : 20*1024*1024;
+    if (file.size > maxBytes) {
+      alert(`File too large (max ${isImage ? '5MB' : '20MB'})`);
+      return;
+    }
+    try {
+      setUploading(true); // Disable further uploads until done
+      const fd = new FormData(); 
+      fd.append('file', file);  //Create a FormData object and append the chosen file under the file key
+      const { data } = await axios.post(`${backendUrl}/api/user/upload/chat-file`, fd, { headers: { token } });
+      if (!data.success) throw new Error(data.message || 'Upload failed');
+      const meta = data.file;
+      const clientMessageId = generateClientMessageId();
+      const optimistic = {  //optimistic message object to show immediately in the chat while the server-side send-message completes.
+        _id: `local-${clientMessageId}`,
+        clientMessageId,
+        appointmentId,
+        senderType: 'user',
+        message: '',
+        type: meta.type,
+        url: meta.url,
+        mimeType: meta.mimeType,
+        size: meta.size,
+        filename: meta.filename,
+        thumbnailUrl: meta.thumbnailUrl,
+        timestamp: new Date().toISOString(),
+        localStatus: 'sending'
+      };
+      setMessages(prev => [...prev, optimistic]);
+      socketRef.current.emit('send-message', {  //Add the optimistic message to the local messages array (so the user sees the file immediately).
+        appointmentId,
+        clientMessageId,
+        type: meta.type,
+        url: meta.url,
+        mimeType: meta.mimeType,
+        size: meta.size,
+        filename: meta.filename,
+        thumbnailUrl: meta.thumbnailUrl,
+        message: ''
+      }, (ack) => {
+        if (ack && ack.ok && ack.message) {
+          setMessages(prev => {
+            const serverMsg = { ...ack.message, localStatus: 'sent' };
+            return upsertMessage(prev, serverMsg);
+          });
+        } else {
+          setMessages(prev => prev.map(m => m.clientMessageId === clientMessageId ? { ...m, localStatus: 'error' } : m));
+        }
+      });
+    } catch (err) {
+      alert(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   // Status indicator for current user's messages
   const renderStatus = (msg) => {
     if (msg.senderType !== 'user') return null; // Only show on outgoing messages
@@ -295,26 +375,91 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
 
       {/* Message display area */}
       <div ref={listRef} onScroll={onScroll} className="h-96 overflow-y-auto mb-4 space-y-2">
-        {messages.map((msg, idx) => (
-          // Each message bubble (style depends on who sent it)
-          <div
-            key={msg._id || msg.clientMessageId || idx}
-            className={`p-2 rounded ${
-              msg.senderType === 'user' ? 'bg-blue-100 ml-auto' : 'bg-gray-100'
-            } max-w-xs`}
-          >
-            <p className="text-sm">{msg.message}</p>
-            {/* Show message time in local time format */}
-            <span className="text-xs text-gray-500 flex items-center justify-end">
-              {new Date(msg.timestamp).toLocaleTimeString()}
-              {renderStatus(msg)}
-            </span>
-          </div>
-        ))}
+        {messages.map((msg, idx) => {
+          const base = `p-2 rounded max-w-xs ${msg.senderType === 'user' ? 'bg-blue-100 ml-auto' : 'bg-gray-100'}`;
+          const time = new Date(msg.timestamp).toLocaleTimeString();
+          if (msg.type === 'image') {
+            return (
+              <div key={msg._id || msg.clientMessageId || idx} className={base}>
+                <a href={msg.url} target="_blank" rel="noreferrer">
+                  <img src={msg.thumbnailUrl || msg.url} alt={msg.filename || 'image'} className="rounded mb-2 max-h-60 object-cover" />
+                </a>
+                {msg.message ? <p className="text-sm mb-1">{msg.message}</p> : null}
+                <span className="text-xs text-gray-500 flex items-center justify-end">{time}{renderStatus(msg)}</span>
+              </div>
+            );
+          }
+          if (msg.type === 'file') {
+            const kb = msg.size ? Math.ceil(msg.size/1024) : null;
+            return (
+              <div key={msg._id || msg.clientMessageId || idx} className={base}>
+                <p className="text-sm font-medium break-all">{msg.filename || 'File'}</p>
+                {kb ? <p className="text-xs text-gray-600">{kb} KB</p> : null}
+                <a href={msg.url} target="_blank" rel="noreferrer" className="text-blue-600 underline text-sm mt-1 inline-block">Download</a>
+                {msg.message ? <p className="text-sm mt-1">{msg.message}</p> : null}
+                <span className="text-xs text-gray-500 flex items-center justify-end mt-1">{time}{renderStatus(msg)}</span>
+              </div>
+            );
+          }
+          return (
+            <div key={msg._id || msg.clientMessageId || idx} className={base}>
+              <p className="text-sm break-words">{msg.message}</p>
+              <span className="text-xs text-gray-500 flex items-center justify-end">{time}{renderStatus(msg)}</span>
+            </div>
+          );
+        })}
       </div>
 
       {/* Input box + Send button */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
+        {/* Hidden inputs for image and file */}
+        <input
+          type="file"
+          ref={imageInputRef}
+          accept="image/*"
+          className="hidden"
+          onChange={onFileChange}
+          disabled={uploading}
+        />
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          onChange={onFileChange}
+          disabled={uploading}
+        />
+
+        {/* Attach button with hover menu */}
+        <div className={`relative group ${uploading ? 'pointer-events-none opacity-60' : ''}`}>
+          <button
+            type="button"
+            aria-haspopup="true"
+            aria-expanded="false"
+            className="border rounded p-2 bg-gray-50 hover:bg-gray-100"
+            title={uploading ? 'Uploading…' : 'Attach'}
+          >
+            <FiPaperclip className="w-5 h-5 text-gray-700" />
+          </button>
+          {/* Hover menu */}
+          <div className="absolute bottom-full mb-2 left-0 z-20 hidden group-hover:block group-focus-within:block">
+            <div className="min-w-[140px] rounded-md shadow-lg border border-gray-200 bg-white py-1">
+              <button
+                type="button"
+                onClick={() => openFilePicker('image')}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 text-gray-700"
+              >
+                <FiImage className="w-4 h-4" /> Image
+              </button>
+              <button
+                type="button"
+                onClick={() => openFilePicker('file')}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 text-gray-700"
+              >
+                <FiFile className="w-4 h-4" /> File
+              </button>
+            </div>
+          </div>
+        </div>
         <input
           type="text"
           value={newMessage}  // Controlled input

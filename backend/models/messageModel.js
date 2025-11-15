@@ -7,11 +7,19 @@ const messageSchema = new mongoose.Schema({
 //  appointment, preventing unauthorized conversations between patients and doctors who don't have a booking relationship.
   senderId: { type: mongoose.Schema.Types.ObjectId, required: true },  
   senderType: { type: String, enum: ['user', 'doctor'], required: true },  
-  message: { type: String, required: true, trim: true, maxlength: 2000 },  
+  message: { type: String, trim: true, maxlength: 2000, default: '', required: function() { return this.type === 'text'; } },  
   timestamp: { type: Date, default: Date.now },  
   isRead: { type: Boolean, default: false }  ,
   clientMessageId: { type: String, index: true },
   readAt: { type: Date, default: null },
+
+    // Add/extend fields in messageSchema
+  type: { type: String, enum: ['text', 'image', 'file'], default: 'text' }, // file-->any non-image file (PDF, DOCX, ZIP, etc.)
+  url: { type: String, default: null },            // CDN/Cloudinary URL
+  mimeType: { type: String, default: null },        // the type of the file we need it to reject the unsupported files and to show the correct preview.
+  size: { type: Number, default: null },           // bytes
+  thumbnailUrl: { type: String, default: null },   // Most CDNs (Cloudinary) generate thumbnails automatically.
+  filename: { type: String, default: null },       // original name
 });  
 
 // Indexes for performance and reliability
@@ -25,7 +33,9 @@ messageSchema.index(
   // Use $type: 'string' to include only documents where clientMessageId is a string.
   // This avoids using $ne:null (rewritten as $not $eq null), which some server versions reject in partial indexes.
   { unique: true, partialFilterExpression: { clientMessageId: { $type: 'string' } } }
-); // Prevents duplicates on retry (same sender + same message ID can’t be stored twice)
+);  // Prevents duplicates on retry (same sender + same message ID can’t be stored twice)
+messageSchema.index({ appointmentId: 1, _id: -1 }); // imporve the chat message pagination.
+
 
 
   
