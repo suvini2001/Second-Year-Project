@@ -102,64 +102,152 @@ CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 PORT=8000
-ADMIN_EMAIL=your_admin_email
-ADMIN_PASSWORD=your_admin_password
-FRONTEND_URL=http://localhost:5173
-```
+# 2YP Medical Appointment System
 
-For `admin/` and `frontend/`, create `.env` files with:
+A full-stack web application for managing medical appointments, featuring real-time chat and file sharing. This project provides separate interfaces for patients, doctors, and administrators, built with the MERN stack (MongoDB, Express, React, Node.js) and integrated with Socket.IO and Cloudinary.
 
-```
-VITE_BACKEND_URL=http://localhost:8000
-```
+## Project Structure
 
-Notes
-- The Socket.IO server allows CORS from the Vite dev servers by default: http://localhost:5173 (frontend) and http://localhost:5174 (admin)
-- No extra services are required for chat; it runs on the same backend port
+The repository is a monorepo containing three distinct applications:
+
+-   `backend/`: The core of the system. A Node.js/Express REST API that handles business logic, database interactions (MongoDB), user authentication (JWT), and real-time communication (Socket.IO).
+-   `frontend/`: A React-based single-page application (built with Vite) for patients. It allows them to browse doctors, book appointments, and communicate with their assigned doctor.
+-   `admin/`: A separate React-based single-page application (built with Vite) that serves as a combined portal for both system administrators and doctors.
 
 ---
 
-## Installation
+## Features by Role
 
-1. **Clone the repository:**
-   ```
-   git clone https://github.com/suvini2001/2YP.git
-   cd 2YP
-   ```
+### 1. User (Patient) Features (`frontend/`)
 
-2. **Install dependencies:**
-   ```
-   cd backend && npm install
-   cd ../admin && npm install
-   cd ../frontend && npm install
-   ```
+-   **Authentication:** Secure user registration and login with JWT.
+-   **Doctor Discovery:** Browse a list of available doctors and view their specialities.
+-   **Appointment Booking:** Select a doctor and book an available time slot.
+-   **Appointment Management:** View a list of upcoming and past appointments (`My Appointments`).
+-   **Real-Time Chat:** Engage in a private, real-time chat with the doctor for each appointment.
+    -   **File Sharing:** Upload images and documents (PDF, DOCX) directly in the chat.
+    -   **Download Files:** Download files shared by the doctor.
+    -   **Optimistic UI:** Sent messages appear instantly and update their status (sending → sent → read).
+    -   **Upload Indicator:** A visual spinner is displayed while a file is uploading.
+-   **Profile Management:** Update personal profile information.
 
-3. **Set up environment variables** as described above.
+### 2. Doctor Features (`admin/`)
 
-4. **Start the backend server:**
-   ```
-   cd backend
-   npm run server
-   ```
+-   **Authentication:** Secure doctor-specific login.
+-   **Dashboard:** View key statistics like total appointments, revenue, and patient count.
+-   **Appointment Management:** See a list of all assigned appointments and filter them by status (upcoming, completed).
+-   **Real-Time Chat:** Communicate with patients for each specific appointment.
+    -   **File Sharing:** Securely send images and documents to patients.
+    -   **Download Files:** Access files uploaded by patients.
+    -   **Read Receipts:** See when a patient has read a message (`✓✓`).
+    -   **Upload Indicator:** A visual spinner provides feedback during file uploads.
+-   **Inbox:** View a list of all conversations, with the latest message and an unread message count for each.
+-   **Profile Management:** Update professional details and availability.
 
-5. **Start the admin and frontend apps (in separate terminals):**
-   ```
-   cd admin
-   npm run dev
-   ```
-   ```
-   cd frontend
-   npm run dev
-   ```
+### 3. Administrator Features (`admin/`)
+
+-   **Authentication:** Secure admin-specific login.
+-   **Dashboard:** Access an overview of the entire system, including total doctors, patients, and appointments.
+-   **Doctor Management:** Add new doctors to the system and view a list of all registered doctors.
+-   **Appointment Oversight:** View a comprehensive list of all appointments across the platform.
+
+---
+
+## Real-Time Chat System
+
+The chat system is built with Socket.IO and provides secure, private, and persistent conversations for each appointment.
+
+-   **Technology:** Socket.IO is integrated into the main `backend` Express server.
+-   **Authentication:** WebSocket connections are authenticated using the same JWT sent by the client during the initial handshake. The server decodes the token to identify the user/doctor and their role.
+-   **Scoped Rooms:** To ensure privacy, clients join rooms specific to their context:
+    -   `appointment-<appointmentId>`: For broadcasting messages only to participants of a single appointment.
+    -   `user-<userId>` / `doctor-<doctorId>`: For sending notifications like unread message counts to a specific user's inbox.
+-   **Key Events:**
+    -   `join-appointment`: Client joins a specific chat room.
+    -   `send-message`: Client sends a message (text or file metadata) with an optimistic `clientMessageId`. The server provides an acknowledgement (`ack`) to confirm success or failure.
+    -   `receive-message`: Server broadcasts a new message to all clients in the appointment room.
+    -   `messages-read`: Fired when a user opens a chat, allowing the server to update the `isRead` status in the database and notify the sender.
+-   **File Sharing & Persistence:**
+    1.  The client first makes a REST `POST` request to `/api/[user|doctor]/upload/chat-file` with the file.
+    2.  The backend uses `multer` for file handling and uploads the file to **Cloudinary**.
+    3.  For documents like PDFs, the backend generates a special Cloudinary URL with `flags: 'attachment'` to ensure it triggers a download. For images, a thumbnail is generated.
+    4.  The backend returns the file's metadata (URL, filename, size).
+    5.  The client then emits a `send-message` event over Socket.IO with this metadata.
+    6.  All messages, including file metadata, are saved in the `messages` collection in MongoDB.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+-   Node.js (v18+ recommended)
+-   MongoDB (local or a cloud service like MongoDB Atlas)
+-   A Cloudinary account for file storage.
+
+### 1. Backend Setup
+
+1.  Navigate to the `backend` directory: `cd backend`
+2.  Install dependencies: `npm install`
+3.  Create a `.env` file and add the following variables:
+
+    ```env
+    # MongoDB Connection
+    MONGODB_URI=your_mongodb_connection_string
+
+    # JWT Secret
+    JWT_SECRET=a_strong_and_secret_key
+
+    # Cloudinary Credentials
+    CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+    CLOUDINARY_API_KEY=your_cloudinary_api_key
+    CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+
+    # Server Port
+    PORT=8000
+
+    # Default Admin Credentials
+    ADMIN_EMAIL=admin@example.com
+    ADMIN_PASSWORD=adminpassword
+
+    # Frontend URL for CORS
+    FRONTEND_URL=http://localhost:5173
+    ```
+
+4.  Start the backend server: `npm run server`
+
+### 2. Frontend & Admin Setup
+
+1.  **For the User Frontend:**
+    -   Navigate to the directory: `cd frontend`
+    -   Install dependencies: `npm install`
+    -   Create a `.env` file with the backend URL:
+        ```env
+        VITE_BACKEND_URL=http://localhost:8000
+        ```
+    -   Start the development server: `npm run dev` (usually runs on `http://localhost:5173`)
+
+2.  **For the Admin/Doctor Portal:**
+    -   Navigate to the directory: `cd admin`
+    -   Install dependencies: `npm install`
+    -   Create a `.env` file with the backend URL:
+        ```env
+        VITE_BACKEND_URL=http://localhost:8000
+        ```
+    -   Start the development server: `npm run dev` (usually runs on `http://localhost:5174`)
+
+### 3. Accessing the Application
+
+-   **User App:** Open `http://localhost:5173` in your browser.
+-   **Admin/Doctor App:** Open `http://localhost:5174` in your browser.
 
 ---
 
 ## Security Notes
 
-- Do NOT commit your `.env` files or any secrets to the repository.
-- Always rotate secrets if they were ever exposed.
-- Use `.env.example` to share required environment variables (without real values).
+-   **Password Hashing:** User and doctor passwords are securely hashed with `bcrypt` before being stored.
+-   **Authentication:** All sensitive API routes and WebSocket connections are protected by JWT middleware.
+-   **Authorization:** Backend logic ensures that users and doctors can only access data related to their own appointments and profiles.
 
----
 
 
