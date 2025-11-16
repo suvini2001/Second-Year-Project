@@ -1,6 +1,6 @@
 // Import required React hooks and libraries
-import { useContext, useEffect, useState, useRef, useCallback } from 'react';
-import { FiPaperclip, FiImage, FiFile } from 'react-icons/fi';
+import { useContext, useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { FiPaperclip, FiImage, FiFile, FiSearch, FiX } from 'react-icons/fi';
 import { io } from 'socket.io-client';          // For real-time communication
 import { AppContext } from '../context/AppContext';  // Context to access global app variables (like token, backendUrl)
 import axios from 'axios';                     // For making HTTP requests
@@ -18,6 +18,9 @@ const ChatBox = ({ appointmentId, doctorName }) => {
   const [loading, setLoading] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('connecting'); // 'connected' | 'connecting' | 'disconnected'
+  const [showNewBadge, setShowNewBadge] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef(null); // for documents
   const imageInputRef = useRef(null); // for images
 
@@ -74,6 +77,18 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
       transports: ['websocket']
     });
 
+    // connection state handlers
+    setConnectionStatus('connecting');
+    socketRef.current.on('connect', () => setConnectionStatus('connected'));
+    socketRef.current.on('disconnect', () => setConnectionStatus('disconnected'));
+    try {
+      // Manager-level events for reconnect attempts/errors
+      socketRef.current.io?.on('reconnect_attempt', () => setConnectionStatus('connecting'));
+      socketRef.current.io?.on('error', () => setConnectionStatus('disconnected'));
+      socketRef.current.io?.on('reconnect', () => setConnectionStatus('connected'));
+      socketRef.current.on('connect_error', () => setConnectionStatus('disconnected'));
+    } catch (_) {}
+
     // 2️⃣ Join a specific chat room related to this appointment
     socketRef.current.emit('join-appointment', appointmentId);
 
@@ -96,6 +111,10 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
           // Always scroll for our own outgoing messages
           if (message?.senderType === 'user' || nearBottom) {
             el.scrollTop = el.scrollHeight;
+            setShowNewBadge(false);
+          } else {
+            // incoming while scrolled up -> show new badge
+            setShowNewBadge(true);
           }
         }
       } catch (_) {}
@@ -366,16 +385,111 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
     if (el.scrollTop <= 10) {
       loadOlderMessages();
     }
+    // hide new badge when user returns near bottom
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 20;
+    if (nearBottom) setShowNewBadge(false);
   };
+
+  const scrollToBottom = () => {
+    try {
+      const el = listRef.current;
+      if (el) {
+        el.scrollTop = el.scrollHeight;
+        setShowNewBadge(false);
+      }
+    } catch (_) {}
+  };
+
+  const retryMessage = (msg) => {
+    if (!socketRef.current) return;
+    const clientMessageId = msg.clientMessageId || generateClientMessageId();
+    // mark as sending again
+    setMessages(prev => prev.map(m =>
+      (m.clientMessageId && m.clientMessageId === msg.clientMessageId) || (m._id && m._id === msg._id)
+        ? { ...m, localStatus: 'sending' }
+        : m
+    ));
+
+    const base = { appointmentId, clientMessageId };
+    let payload = base;
+    if (msg.type === 'image' || msg.type === 'file') {
+      payload = {
+        ...base,
+        type: msg.type,
+        url: msg.url,
+        mimeType: msg.mimeType,
+        size: msg.size,
+        filename: msg.filename,
+        thumbnailUrl: msg.thumbnailUrl,
+        message: msg.message || ''
+      };
+    } else {
+      payload = { ...base, message: msg.message || '' };
+    }
+
+    socketRef.current.emit('send-message', payload, (ack) => {
+      if (ack && ack.ok && ack.message) {
+        setMessages(prev => {
+          const serverMsg = { ...ack.message, localStatus: 'sent' };
+          return upsertMessage(prev, serverMsg);
+        });
+      } else {
+        setMessages(prev => prev.map(m =>
+          (m.clientMessageId && m.clientMessageId === msg.clientMessageId) || (m._id && m._id === msg._id)
+            ? { ...m, localStatus: 'error' }
+            : m
+        ));
+      }
+    });
+  };
+
+  const visibleMessages = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return messages;
+    return messages.filter((msg) => {
+      const bucket = [msg.message || '', msg.filename || ''];
+      return bucket.some((part) => part && part.toLowerCase().includes(query));
+    });
+  }, [messages, searchQuery]);
+
+  const hasSearch = searchQuery.trim().length > 0;
 
   return (
     <div className="border rounded-lg p-4">
       {/* Chat header showing doctor's name */}
-      <h3 className="font-semibold mb-4">Chat with Dr. {doctorName}</h3>
+      <div className="flex flex-col gap-2 mb-4">
+        <h3 className="font-semibold">Chat with Dr. {doctorName}</h3>
+        <div className="flex gap-2">
+          <div className="flex flex-1 items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/60 px-3 py-2 shadow-inner focus-within:ring-2 focus-within:ring-blue-400 transition">
+            <FiSearch className="text-blue-600" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search messages or files"
+              className="flex-1 bg-transparent text-sm placeholder-blue-400 focus:outline-none"
+              aria-label="Search chat messages"
+            />
+            {hasSearch && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="text-blue-600 hover:text-blue-800 transition"
+                aria-label="Clear search"
+              >
+                <FiX />
+              </button>
+            )}
+          </div>
+          {!hasSearch && (
+            <span className="hidden md:inline-flex items-center rounded-full bg-blue-100 px-3 text-xs font-semibold text-blue-700">Search chat</span>
+          )}
+        </div>
+      </div>
 
       {/* Message display area */}
-      <div ref={listRef} onScroll={onScroll} className="h-96 overflow-y-auto mb-4 space-y-2">
-        {messages.map((msg, idx) => {
+      <div ref={listRef} onScroll={onScroll} className="relative h-96 overflow-y-auto mb-4 space-y-2">
+        {visibleMessages.map((msg, idx) => {
           const base = `p-2 rounded max-w-xs ${msg.senderType === 'user' ? 'bg-blue-100 ml-auto' : 'bg-gray-100'}`;
           const time = new Date(msg.timestamp).toLocaleTimeString();
           if (msg.type === 'image') {
@@ -385,7 +499,13 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
                   <img src={msg.thumbnailUrl || msg.url} alt={msg.filename || 'image'} className="rounded mb-2 max-h-60 object-cover" />
                 </a>
                 {msg.message ? <p className="text-sm mb-1">{msg.message}</p> : null}
-                <span className="text-xs text-gray-500 flex items-center justify-end">{time}{renderStatus(msg)}</span>
+                <span className="text-xs text-gray-500 flex items-center justify-end gap-2">
+                  {time}
+                  {renderStatus(msg)}
+                  {msg.senderType === 'user' && msg.localStatus === 'error' ? (
+                    <button onClick={() => retryMessage(msg)} className="text-red-600 underline">Retry</button>
+                  ) : null}
+                </span>
               </div>
             );
           }
@@ -397,17 +517,37 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
                 {kb ? <p className="text-xs text-gray-600">{kb} KB</p> : null}
                 <a href={msg.url} target="_blank" rel="noreferrer" className="text-blue-600 underline text-sm mt-1 inline-block">Download</a>
                 {msg.message ? <p className="text-sm mt-1">{msg.message}</p> : null}
-                <span className="text-xs text-gray-500 flex items-center justify-end mt-1">{time}{renderStatus(msg)}</span>
+                <span className="text-xs text-gray-500 flex items-center justify-end mt-1 gap-2">
+                  {time}
+                  {renderStatus(msg)}
+                  {msg.senderType === 'user' && msg.localStatus === 'error' ? (
+                    <button onClick={() => retryMessage(msg)} className="text-red-600 underline">Retry</button>
+                  ) : null}
+                </span>
               </div>
             );
           }
           return (
             <div key={msg._id || msg.clientMessageId || idx} className={base}>
               <p className="text-sm break-words">{msg.message}</p>
-              <span className="text-xs text-gray-500 flex items-center justify-end">{time}{renderStatus(msg)}</span>
+              <span className="text-xs text-gray-500 flex items-center justify-end gap-2">
+                {time}
+                {renderStatus(msg)}
+                {msg.senderType === 'user' && msg.localStatus === 'error' ? (
+                  <button onClick={() => retryMessage(msg)} className="text-red-600 underline">Retry</button>
+                ) : null}
+              </span>
             </div>
           );
         })}
+        {hasSearch && visibleMessages.length === 0 && (
+          <div className="text-center text-sm text-gray-500 py-4">No messages match "{searchQuery}".</div>
+        )}
+        {showNewBadge && (
+          <button onClick={scrollToBottom} className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs px-3 py-1 rounded-full shadow">
+            New messages
+          </button>
+        )}
       </div>
 
       {/* Input box + Send button */}
@@ -470,11 +610,15 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
         />
         <button
           onClick={sendMessage}
-          className="bg-primary text-white px-4 py-2 rounded"
+          disabled={connectionStatus !== 'connected'}
+          className={`bg-primary text-white px-4 py-2 rounded ${connectionStatus !== 'connected' ? 'opacity-60 cursor-not-allowed' : ''}`}
         >
           Send
         </button>
       </div>
+      {connectionStatus !== 'connected' && (
+        <div className="text-xs text-gray-600 mt-2">{connectionStatus === 'connecting' ? 'Reconnecting…' : 'Disconnected. Trying to reconnect…'}</div>
+      )}
       {uploading && (
         <div className="text-sm text-gray-500 mt-2 flex items-center gap-2">
           <svg className="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

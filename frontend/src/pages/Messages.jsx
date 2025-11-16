@@ -1,8 +1,9 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';  //standard React hooks for managing component state, lifecycle, and accessing context.
+import React, { useContext, useEffect, useRef, useState, useMemo } from 'react';  //standard React hooks for managing component state, lifecycle, and accessing context.
 import { AppContext } from '../context/AppContext';  //a context object that likely provides global values like the logged-in user’s token and backend URL
 import axios from 'axios';  //for making HTTP API requests to the backend.
 import { useNavigate } from 'react-router-dom';   //for programmatic navigation between routes.
 import { io } from 'socket.io-client'; // for realtime inbox updates
+import { FiSearch, FiX } from 'react-icons/fi';
 
 
 // AppContext	A global storage for app-wide data
@@ -34,6 +35,7 @@ const Messages = () => {
 	const [inbox, setInbox] = useState([]); //stores the list of conversation objects fetched from the backend.
 	const [loading, setLoading] = useState(true); //tracks whether data is still being fetched.
 	const [error, setError] = useState(''); //stores any error message to display to the user.
+	const [searchQuery, setSearchQuery] = useState('');
 	const navigate = useNavigate(); 
 
 	// Realtime inbox: initial fetch + socket "inbox-update" + on-focus refresh
@@ -100,9 +102,51 @@ const Messages = () => {
 		navigate(`/user-chat/${item.appointmentId}`, { state: { doctorName: item.doctor?.name || 'Doctor' } });  //navigates to the chat page for the selected appointment, passing the doctor's name in the navigation state.
 	};
 
+	const filteredInbox = useMemo(() => {
+		const query = searchQuery.trim().toLowerCase();
+		if (!query) return inbox;
+		return inbox.filter((item) => {
+			const name = item.doctor?.name || '';
+			const preview = item.lastMessage?.message || '';
+			return name.toLowerCase().includes(query) || preview.toLowerCase().includes(query);
+		});
+	}, [inbox, searchQuery]);
+
+	const hasSearch = searchQuery.trim().length > 0;
+
 	return (
 		<div className="min-h-[70vh] py-6">
-			<h1 className="text-2xl font-bold text-blue-900 mb-4">Messages</h1>
+			<div className="flex flex-col gap-3 mb-6">
+				<h1 className="text-2xl font-bold text-blue-900 text-center">Messages</h1>
+				<div className="flex flex-col items-center gap-2">
+					<div className="flex w-full max-w-2xl items-center gap-2 rounded-2xl border border-blue-200 bg-white px-4 py-2 shadow-inner focus-within:ring-2 focus-within:ring-blue-400 transition">
+						<FiSearch className="text-blue-600" />
+						<input
+							type="search"
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							placeholder="Search by doctor or latest message"
+							className="flex-1 bg-transparent text-sm placeholder-blue-400 focus:outline-none"
+							aria-label="Search conversations"
+						/>
+						{hasSearch && (
+							<button
+								type="button"
+								onClick={() => setSearchQuery('')}
+								className="text-blue-600 hover:text-blue-800"
+								aria-label="Clear search"
+							>
+								<FiX />
+							</button>
+						)}
+					</div>
+					{!hasSearch && (
+						<span className="inline-flex items-center rounded-full bg-blue-100 px-3 text-xs font-semibold text-blue-700">
+							Filter inbox
+						</span>
+					)}
+				</div>
+			</div>
 
             {/* If loading is true: Displays “Loading inbox…” in blue. */}
 			{loading && (
@@ -120,7 +164,7 @@ const Messages = () => {
 
             {/* inbox message list */}
 			<div className="space-y-3">
-				{inbox.map((item) => (     //loops through each conversation (each item) in your inbox array.
+				{filteredInbox.map((item) => (     //loops through each conversation (each item) in your inbox array.
 					<button
 						key={item.appointmentId}
 						onClick={() => openChat(item)}  
@@ -153,6 +197,9 @@ const Messages = () => {
 						)}
 					</button>
 				))}
+				{hasSearch && !loading && filteredInbox.length === 0 && (
+					<div className="text-blue-700/80 text-center text-sm">No matches for "{searchQuery}".</div>
+				)}
 			</div>
 		</div>
 	);
