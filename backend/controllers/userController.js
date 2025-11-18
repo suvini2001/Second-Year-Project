@@ -7,6 +7,8 @@ import doctorModel from "../models/doctorModel.js";
 import appointmentModel from "../models/appointmentModel.js";
 import messageModel from "../models/messageModel.js";
 import crypto from "crypto";
+import { sendEmail } from "../services/emailService.js";
+
 
 //API to register a user
 
@@ -274,6 +276,61 @@ const verifyMockPayment = async (req, res) => {
                 const newEarnings = (doctor.earnings || 0) + appointment.amount;
                 await doctorModel.findByIdAndUpdate(appointment.docId, { earnings: newEarnings });
             }
+            // Send payment confirmation emails (fire-and-forget)
+            try {
+                const userEmail = appointment?.userData?.email; // embedded snapshot
+                const doctorEmail = appointment?.docData?.email || doctor?.email;
+                const apptDate = appointment.slotDate;
+                const apptTime = appointment.slotTime;
+                const when = formatAppointmentDate(apptDate, apptTime);
+                const amount = appointment.amount;
+
+                // Create email subject
+                const subject = `Payment Confirmed - ${when}`;
+
+                 // HTML template for user confirmation email
+                const userHtml = `<!DOCTYPE html><html><body style="font-family:Arial;line-height:1.5;color:#222">
+                  <h2 style="color:#0a7cff;margin:0 0 12px">Payment Successful</h2>
+                  <p>Your appointment is confirmed.</p>
+                  <p><strong>When:</strong> ${when}<br/>
+                  <strong>Amount Paid:</strong> $${amount}</p>
+                  <p>Doctor: ${appointment?.docData?.name || 'Doctor'}</p>
+                  <p style="margin-top:20px">Thank you,<br/>DocOp Team</p>
+                </body></html>`;
+
+                 // HTML template for doctor notification email
+                const doctorHtml = `<!DOCTYPE html><html><body style="font-family:Arial;line-height:1.5;color:#222">
+                  <h2 style="color:#0a7cff;margin:0 0 12px">New Paid Appointment</h2>
+                  <p>An appointment has been paid and confirmed.</p>
+                  <p><strong>When:</strong> ${when}<br/>
+                  <strong>Patient:</strong> ${appointment?.userData?.name || 'Patient'}<br/>
+                  <strong>Amount:</strong> $${amount}</p>
+                  <p style="margin-top:20px">DocOp Notification</p>
+                </body></html>`;
+
+                // Array to collect email promises
+                const sends = [];
+
+                 // Add user email to send queue if email exists
+                if (userEmail) {
+                  sends.push(sendEmail({ to: userEmail, subject, html: userHtml }));
+                }
+
+                  // Add doctor email to send queue if email exists
+                if (doctorEmail) {
+                  sends.push(sendEmail({ to: doctorEmail, subject: `Patient Paid - ${when}`, html: doctorHtml }));
+                }
+                
+                // Run concurrently without blocking response; ignore individual failures
+                Promise.allSettled(sends).then(r => {
+                  const failed = r.filter(x => x.status === 'rejected');
+                  if (failed.length) {
+                    console.error('Email send failures (payment confirmation):', failed.map(f=>f.reason?.message||f.reason));
+                  }
+                });
+            } catch (emailErr) {
+                console.error('Payment confirmation email error:', emailErr?.message || emailErr);
+            }
         }
         res.json({ success: true, message: "Payment successful and appointment updated" });
     } catch (error) {
@@ -384,6 +441,20 @@ const getUserInbox = async (req, res) => {
 };
 
 export { registerUser, loginUser, getProfile, updateProfile, bookAppointment, listAppointment, cancelAppointment, generateMockPayment, verifyMockPayment, getUnreadMessagesCount, getUserInbox };
+
+// Send a test email (for setup verification)
+export const sendTestEmail = async (req, res) => {
+  try {
+    const { to, subject, text, html } = req.body || {};
+    if (!to) return res.status(400).json({ success: false, message: "'to' is required" });
+
+    await sendEmail({ to, subject: subject || "DocOp Test Email", text, html: html || "Hello from DocOp via Brevo!" });
+    return res.json({ success: true, message: "Email sent" });
+  } catch (err) {
+    console.error("sendTestEmail error:", err);
+    return res.status(500).json({ success: false, message: err?.message || "Failed to send email" });
+  }
+};
 
 
 //The meta object is a container for appointment metadata — meaning, it stores extra contextual information about each appointment that isn’t directly part of the messaging data but is still relevant when displaying or managing the inbox.

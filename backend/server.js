@@ -13,12 +13,15 @@ import messageModel from "./models/messageModel.js";
 import appointmentModel from "./models/appointmentModel.js";
 import mongoose from "mongoose";
 
+// dotenv already loaded above via ESM import
+
 // cloudinary configuration
 connectCloudinary();
 
 // app configuration
 const app = express(); // create express app instance use this to define the routes and middlewares
 const PORT = process.env.PORT || 8000; // define the port for the server
+const emailApiKey = process.env.BREVO_API_KEY; // available for future email-related health checks
 
 const server = http.createServer(app);
 const io = new Server(server, {

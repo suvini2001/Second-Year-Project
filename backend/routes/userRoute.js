@@ -1,5 +1,5 @@
 import express from 'express'
-import { registerUser,loginUser, getProfile,updateProfile,bookAppointment,listAppointment,cancelAppointment,generateMockPayment,verifyMockPayment,getUnreadMessagesCount, getUserInbox} from '../controllers/userController.js'
+import { registerUser,loginUser, getProfile,updateProfile,bookAppointment,listAppointment,cancelAppointment,generateMockPayment,verifyMockPayment,getUnreadMessagesCount, getUserInbox, sendTestEmail} from '../controllers/userController.js'
 import authUser from '../middleware/authUser.js';
 import upload from '../middleware/multer.js';
 import { getMessages } from '../controllers/messageController.js'; 
@@ -22,6 +22,8 @@ userRouter.get('/messages/:appointmentId', authUser, getMessages);
 userRouter.get('/unread-messages',authUser,getUnreadMessagesCount)
 userRouter.get('/inbox',authUser,getUserInbox);
 userRouter.post('/upload/chat-file', authUser, upload.single('file'), uploadChatFile);
+// Email test endpoint (secured)
+userRouter.post('/test-email', authUser, sendTestEmail);
   
 
 export default userRouter

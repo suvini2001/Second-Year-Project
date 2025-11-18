@@ -39,6 +39,7 @@ This repository contains a full-stack web application for managing medical appoi
 - Cloudinary integration for image uploads
 - Secure password hashing
 - Socket.IO for real‑time messaging (JWT-authenticated WebSocket connections)
+- Transactional email via Brevo (Sendinblue) for notifications
 
 ---
 
@@ -210,6 +211,11 @@ The chat system is built with Socket.IO and provides secure, private, and persis
     ADMIN_EMAIL=admin@example.com
     ADMIN_PASSWORD=adminpassword
 
+    # Email (Brevo / Sendinblue)
+    BREVO_API_KEY=your_brevo_api_key
+    EMAIL_FROM=docopservice@docop.me
+    EMAIL_FROM_NAME=DocOp
+
     # Frontend URL for CORS
     FRONTEND_URL=http://localhost:5173
     ```
@@ -240,6 +246,57 @@ The chat system is built with Socket.IO and provides secure, private, and persis
 
 -   **User App:** Open `http://localhost:5173` in your browser.
 -   **Admin/Doctor App:** Open `http://localhost:5174` in your browser.
+
+---
+
+## Email Notifications
+
+- **Provider:** Brevo (formerly Sendinblue) via SDK `@getbrevo/brevo`.
+- **Purpose:** Send transactional emails, such as payment confirmations to patients and notifications to doctors.
+- **Service location:** `backend/services/emailService.js` exports `sendEmail({ to, subject, html, text, sender })`.
+
+### When emails are sent
+- **Payment confirmation:** After a successful mock payment verification (`POST /api/user/verify-payment`), the backend sends:
+    - A confirmation email to the patient
+    - A notification email to the doctor
+    - Implementation: see `verifyMockPayment` in `backend/controllers/userController.js`
+
+### Environment variables
+Add these to `backend/.env` (already shown in Backend Setup above):
+
+```
+BREVO_API_KEY=your_brevo_api_key
+EMAIL_FROM=docopservice@docop.me
+EMAIL_FROM_NAME=DocOp
+```
+
+- `EMAIL_FROM` and `EMAIL_FROM_NAME` define the default sender.
+- If `EMAIL_FROM` is not set, the service falls back to `ADMIN_EMAIL` as sender.
+- If `BREVO_API_KEY` is missing, email sends will fail with an explicit error.
+
+### Test endpoint (secured)
+- Path: `POST /api/user/test-email`
+- Auth: Requires a valid user JWT (`Authorization: Bearer <token>`)
+- Body fields: `to` (required), `subject` (optional), `text` or `html` (optional)
+
+Example (Windows cmd):
+
+```
+curl -X POST "http://localhost:8000/api/user/test-email" ^
+    -H "Authorization: Bearer YOUR_JWT_TOKEN" ^
+    -H "Content-Type: application/json" ^
+    -d "{\"to\":\"you@example.com\",\"subject\":\"DocOp Test\",\"html\":\"<b>Hello from DocOp</b>\"}"
+```
+
+### Using the helper in code
+- Import: `import { sendEmail } from "../services/emailService.js";`
+- Call: `await sendEmail({ to: "user@example.com", subject: "Subject", html: "<p>Body</p>" });`
+
+### Troubleshooting
+- Verify `BREVO_API_KEY` is valid and not rate‑limited.
+- Ensure `EMAIL_FROM` is a verified sender/domain in Brevo.
+- Check server logs for "Email send failures" emitted from `verifyMockPayment`.
+- Confirm outbound connections are allowed if running behind a firewall.
 
 ---
 

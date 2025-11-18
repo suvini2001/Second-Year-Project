@@ -81,3 +81,6 @@ socket.emit('messages-read', { appointmentId })
 - Endpoint (doctor): `GET /api/doctor/messages/:appointmentId?before=ISO_OR_ID&limit=50`
 - Sort: newest → oldest; returns `messages` array, `cursor` with `{ before, id }`, and `hasMore`.
 - Frontend should show messages ASC and load older pages on scroll-top, maintaining scroll position.
+
+
+--- END OF README.md ---
