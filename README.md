@@ -154,7 +154,7 @@ The repository is a monorepo containing three distinct applications:
 
 ---
 
-## Real-Time Chat System
+### Real-Time Chat System
 
 The chat system is built with Socket.IO and provides secure, private, and persistent conversations for each appointment.
 
@@ -249,7 +249,7 @@ The chat system is built with Socket.IO and provides secure, private, and persis
 
 ---
 
-## Email Notifications
+### Email Notifications
 
 - **Provider:** Brevo (formerly Sendinblue) via SDK `@getbrevo/brevo`.
 - **Purpose:** Send transactional emails, such as payment confirmations to patients and notifications to doctors.

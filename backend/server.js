@@ -429,9 +429,13 @@ app.get("/", (req, res) => {
 });
 
 // server listener
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
+
+export { app, server };
 
 //basic moderation
 //checks a message to prevent bad words,obvious spam,repeated characters,harmful or inappropriate content

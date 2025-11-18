@@ -282,17 +282,16 @@ const verifyMockPayment = async (req, res) => {
                 const doctorEmail = appointment?.docData?.email || doctor?.email;
                 const apptDate = appointment.slotDate;
                 const apptTime = appointment.slotTime;
-                const when = formatAppointmentDate(apptDate, apptTime);
                 const amount = appointment.amount;
 
                 // Create email subject
-                const subject = `Payment Confirmed - ${when}`;
+                const subject = `Payment Confirmed - ${apptDate} ${apptTime}`;
 
                  // HTML template for user confirmation email
                 const userHtml = `<!DOCTYPE html><html><body style="font-family:Arial;line-height:1.5;color:#222">
                   <h2 style="color:#0a7cff;margin:0 0 12px">Payment Successful</h2>
                   <p>Your appointment is confirmed.</p>
-                  <p><strong>When:</strong> ${when}<br/>
+                  <p><strong>Appointment Date and Time:</strong> ${apptDate} ${apptTime}<br/>
                   <strong>Amount Paid:</strong> $${amount}</p>
                   <p>Doctor: ${appointment?.docData?.name || 'Doctor'}</p>
                   <p style="margin-top:20px">Thank you,<br/>DocOp Team</p>
@@ -302,7 +301,7 @@ const verifyMockPayment = async (req, res) => {
                 const doctorHtml = `<!DOCTYPE html><html><body style="font-family:Arial;line-height:1.5;color:#222">
                   <h2 style="color:#0a7cff;margin:0 0 12px">New Paid Appointment</h2>
                   <p>An appointment has been paid and confirmed.</p>
-                  <p><strong>When:</strong> ${when}<br/>
+                  <p><strong>Appointment Date and Time:</strong> ${apptDate} ${apptTime}<br/>
                   <strong>Patient:</strong> ${appointment?.userData?.name || 'Patient'}<br/>
                   <strong>Amount:</strong> $${amount}</p>
                   <p style="margin-top:20px">DocOp Notification</p>
@@ -318,7 +317,7 @@ const verifyMockPayment = async (req, res) => {
 
                   // Add doctor email to send queue if email exists
                 if (doctorEmail) {
-                  sends.push(sendEmail({ to: doctorEmail, subject: `Patient Paid - ${when}`, html: doctorHtml }));
+                  sends.push(sendEmail({ to: doctorEmail, subject: `Patient Paid - ${apptDate} ${apptTime}`, html: doctorHtml }));
                 }
                 
                 // Run concurrently without blocking response; ignore individual failures
