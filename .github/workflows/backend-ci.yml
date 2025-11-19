@@ -1,0 +1,94 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run backend tests with coverage
+        working-directory: backend
+        run: npm test -- --coverage
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage/**
+          if-no-files-found: warn
+
+
+
+# What is CI (Continuous Integration)?
+
+# Continuous Integration (CI) is a practice in software development where:
+
+# Every time you or your team push code to a repository (GitHub, GitLab, etc.),
+
+# A server automatically builds your project and runs tests,
+
+# You immediately know if anything is broken.
+
+# Think of it like automatic safety checks for your code.
+
+# Why CI is important:
+
+# Prevents broken code from reaching the main branch.
+
+# Ensures everyone on your team is working with code that passes tests.
+
+# Saves time: you don’t have to manually run tests every time you change something.
+
+# Can automate extra tasks (linting, formatting, deployment).
+
+# 2️⃣ How CI Works (Step by Step)
+
+# You push code to GitHub (or open a PR).
+
+# GitHub detects the push because of your .yml workflow file.
+
+# GitHub spins up a virtual server (Linux machine in the cloud).
+
+# The server clones your repo, installs dependencies, and runs tests.
+
+# The server returns a PASS or FAIL result to GitHub.
+
+# Optionally, CI can upload test coverage, artifacts, or even deploy your code.
+
+# 3️⃣ Key Components of CI
+# Component	What it does
+# Workflow file	A .yml file in .github/workflows (for GitHub) that tells CI what to do
+# Runner	The virtual server that executes your code/tests
+# Jobs	Groups of tasks in a workflow (e.g., “run backend tests”)
+# Steps	Individual commands (e.g., install dependencies, run tests)
+# Artifacts	Files saved from the CI run (like test coverage reports)
+# 4️⃣ Common CI Tools
+
+# GitHub Actions → built into GitHub, easiest for most projects
+
+# GitLab CI/CD → built into GitLab
+
+# CircleCI / TravisCI / Jenkins → standalone CI servers
+
+# Bitbucket Pipelines → for Bitbucket repos
+
+# Since you are on GitHub, GitHub Actions is perfect.
