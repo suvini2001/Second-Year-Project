@@ -5,7 +5,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 
-const LoginTemp = () => {
+const Login = () => {
 
   const {backendUrl,token,setToken} = useContext(AppContext);
   const navigate = useNavigate();
@@ -95,6 +95,6 @@ const LoginTemp = () => {
   );
 };
 
-export default LoginTemp;
+export default Login;
 
-//name updated from login to LoginTemp.jsx
+//name updated from login to Login.
