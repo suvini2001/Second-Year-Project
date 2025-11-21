@@ -17,4 +17,5 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom'],
   },
+  base:process.env.VITE_BASE_PATH|| "/Second-Year-Project",
 })
