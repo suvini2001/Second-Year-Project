@@ -1,6 +1,6 @@
 import { assets } from '../assets/assets_frontend/assets' 
 import { NavLink, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useContext } from 'react'
 import { AppContext } from '../context/AppContext'
 
@@ -15,8 +15,15 @@ const NavBar = () => {
   }
   
 
+  useEffect(() => {
+    // Prevent background scroll when mobile menu is open
+    if (showMenu) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = '';
+    return () => { document.body.style.overflow = ''; };
+  }, [showMenu]);
+
   return (
-    <div className='flex items-center justify-between text-sm py-4 mb-5 border-b border-b-grey-400 relative'>
+    <div className='flex items-center justify-between text-sm py-4 mb-5 border-b border-b-grey-400 relative z-50'>
       {/* Logo */}
       <img 
         onClick={() => navigate('/')} 
@@ -139,7 +146,7 @@ const NavBar = () => {
       </div>
 
       {/* Mobile Menu - Separate Overlay */}
-      <div className={`md:hidden fixed inset-0 z-50 bg-white transition-all duration-300 ${showMenu ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+      <div className={`md:hidden fixed top-0 left-0 w-screen h-screen z-[9999] bg-white transition-all duration-300 ${showMenu ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
         <div className='flex items-center justify-between px-5 py-6 border-b border-gray-200'>
           <img className='w-36' src={assets.logo} alt="Logo" />
           <img 

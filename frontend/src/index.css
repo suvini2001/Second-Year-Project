@@ -20,6 +20,7 @@
 
 body {
   @apply bg-white text-gray-800 font-outfit;
+  overflow-x: hidden;
 }
 
 html {

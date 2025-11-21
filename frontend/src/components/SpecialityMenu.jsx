@@ -10,7 +10,7 @@ const SpecialityMenu = () => {
                 Choose from a wide range of medical specialities to find the right doctor for your needs.
             </p>
         </div>
-        <div className="flex flex-row justify-center gap-6 w-full">
+        <div className="flex justify-center gap-4 w-full flex-wrap">
                 {specialityData.map((item,index)=>(
                    <Link onClick={() => window.scrollTo(0, 0)} key={index} to={`/doctors/${item.speciality}`}  className="flex flex-col items-center justify-center gap-2 bg-white p-4 rounded-lg shadow-md hover:shadow-xl hover:-translate-y-2 transition-all duration-300 w-40">
                     <img src={item.image} alt="" className="w-16 h-16 object-contain" />
