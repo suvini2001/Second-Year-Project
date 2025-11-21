@@ -56,6 +56,9 @@ const AppContextProvider = ({ children }) => {
 
         } catch (error) {
             console.log(error);
+            if (error.response && error.response.status === 401) {
+                setToken('');
+            }
             toast.error(error.response?.data?.message || error.message);
         }
     };
@@ -69,6 +72,9 @@ const AppContextProvider = ({ children }) => {
             }
         } catch (error) {
             console.log("Failed to fetch unread messages count", error);
+            if (error.response && error.response.status === 401) {
+                setToken('');
+            }
         }
     };
 
