@@ -96,3 +96,5 @@ const Login = () => {
 };
 
 export default Login;
+
+//name updated from login to Login
