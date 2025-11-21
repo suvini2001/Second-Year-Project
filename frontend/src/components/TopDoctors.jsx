@@ -9,18 +9,25 @@ const TopDoctors = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 py-16">
         <div className="text-center mb-12">
-            <h1 className="text-3xl font-bold text-gray-900 mb-4 text-center mx-auto">Top Doctors to Book</h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto whitespace-nowrap">Simply browse through our list of top doctors and book your appointment online in minutes.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 text-center mx-auto">Top Doctors to Book</h1>
+            <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">Simply browse through our list of top doctors and book your appointment online in minutes.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
             {doctors.slice(0,10).map((item,index) => (
-                <div onClick={() => {navigate(`/appointment/${item._id}`);scrollTo(0,0)}} key={index} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden group">
+                <div
+                    onClick={() => {navigate(`/appointment/${item._id}`);scrollTo(0,0)}}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { navigate(`/appointment/${item._id}`); scrollTo(0,0); } }}
+                    role="button"
+                    tabIndex={0}
+                    key={index}
+                    className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden group cursor-pointer"
+                >
                     <div className="relative">
                         <img 
                             src={item.image} 
                             alt={item.name} 
-                            className="w-full h-48 object-cover" 
+                            className="w-full h-40 sm:h-48 object-cover" 
                             loading="lazy"
                             width="300"
                             height="192"
@@ -49,7 +56,7 @@ const TopDoctors = () => {
         </div>
 
         <div className="text-center mt-12">
-            <button onClick={()=>{navigate('/doctors'); scrollTo(0,0)}} className="group bg-gradient-to-r from-blue-600 to-blue-800 text-white px-10 py-4 rounded-full font-bold
+            <button onClick={()=>{navigate('/doctors'); scrollTo(0,0)}} className="group bg-gradient-to-r from-blue-600 to-blue-800 text-white px-6 sm:px-10 py-3 sm:py-4 rounded-full font-bold
                            hover:from-blue-700 hover:to-blue-900 transform hover:scale-105
                            transition-all duration-300 shadow-lg hover:shadow-xl
                            border border-blue-400/20 flex items-center gap-3 mx-auto">
