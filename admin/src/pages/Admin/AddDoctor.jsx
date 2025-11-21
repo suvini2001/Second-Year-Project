@@ -21,7 +21,7 @@ const AddDoctor = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const context = useContext(AdminContext);
-    const backendUrl = (context && typeof context.backendUrl === 'string' && context.backendUrl.startsWith('http')) ? context.backendUrl : 'http://localhost:5000';
+   const backendUrl = context?.backendUrl ?? import.meta.env.VITE_BACKEND_URL;
     const aToken = context ? context.aToken : '';
 
     const resetForm = () => {
