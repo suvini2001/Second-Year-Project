@@ -1,5 +1,8 @@
 # 2YP Medical Appointment System
 
+<!-- Deployment badges -->
+[![User site status](https://img.shields.io/website?label=docop.me&url=https%3A%2F%2Fdocop.me)](https://docop.me) [![Admin site status](https://img.shields.io/website?label=admin&url=https%3A%2F%2Fsecond-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app)](https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/) [![Backend status](https://img.shields.io/website?label=docop-backend&url=https%3A%2F%2Fdocop-backend.onrender.com)](https://docop-backend.onrender.com)
+
 This repository contains a full-stack web application for managing medical appointments, with separate admin, doctor, and user interfaces. The system is divided into three main parts:
 
 - **backend/**: Node.js/Express REST API with MongoDB, authentication, and file upload.
@@ -7,6 +10,32 @@ This repository contains a full-stack web application for managing medical appoi
 - **frontend/**: React-based user interface for patients to book appointments, view doctors, and manage profiles.
 
 ---
+
+## Live Deployments
+
+- Frontend (user-facing): https://docop.me  (deployed on Vercel)
+- Admin / Doctor portal: https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/  (deployed on Vercel)
+- Backend API: https://docop-backend.onrender.com  (deployed on Render)
+
+This repository contains a complete, fully-deployed project. ✅
+
+## How to visit the live sites
+
+Quick links to the production deployments (clickable):
+
+- User (production): [https://docop.me](https://docop.me) — the public patient-facing site.
+- Admin / Doctor portal (production): [https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/](https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/) — combined admin & doctor dashboard.
+- Backend API (production): [https://docop-backend.onrender.com](https://docop-backend.onrender.com) — REST API & Socket.IO server.
+
+Helpful notes:
+
+- These badges above display live, at-a-glance status for the three deployments (production). If you maintain a separate staging environment you can add additional shields.io / Vercel / Render status badges here.
+- Recommended browsers: Chrome, Edge, Firefox (desktop and modern mobile browsers are supported but desktop offers the best admin UX).
+- API health check: hit `https://docop-backend.onrender.com` in your browser or `GET /api/health` (if implemented) to confirm the backend is responding.
+
+
+
+
 
 ## Features
 
