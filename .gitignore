@@ -43,3 +43,7 @@ Thumbs.db
 
 # Project-specific: do not commit this document
 chat.docx
+
+
+# Local test output
+test_output.txt
