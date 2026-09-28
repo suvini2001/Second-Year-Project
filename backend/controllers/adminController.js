@@ -167,6 +167,8 @@ const appointmentsAdmin = async (req, res) => {
 };
 
 // API to cancel appointments - copied by user-cancel
+import { releaseSlot } from "../services/slotService.js";
+
 const appointmentCancel = async (req, res) => {
   try {
     const { appointmentId } = req.body;
@@ -193,23 +195,12 @@ const appointmentCancel = async (req, res) => {
     });
 
     // free the doctor slot if present
-    const docId = appt.docId || appt.doc?._id || appt.docId;
+    const docId = appt.docId || appt.doc?._id;
     const slotDate = appt.slotDate;
     const slotTime = appt.slotTime;
 
     if (docId) {
-      const doctorData = await Doctor.findById(docId);
-      const slots_booked =
-        doctorData && doctorData.slots_booked
-          ? { ...doctorData.slots_booked }
-          : null;
-
-      if (slots_booked && slotDate && Array.isArray(slots_booked[slotDate])) {
-        slots_booked[slotDate] = slots_booked[slotDate].filter(
-          (e) => e !== slotTime
-        );
-        await Doctor.findByIdAndUpdate(docId, { slots_booked });
-      }
+      await releaseSlot(docId, slotDate, slotTime);
     }
 
     return res.json({ success: true, message: "Appointment Cancelled" });

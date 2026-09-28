@@ -16,7 +16,7 @@ doctorRouter.post('/complete-appointment', authDoctor, appointmentComplete)
 doctorRouter.post('/cancel-appointment', authDoctor, appointmentCancel)
 doctorRouter.get('/dashboard', authDoctor,doctorDashboard)
 doctorRouter.get('/profile', authDoctor,doctorProfile)
-doctorRouter.post('/update-profile', authDoctor,updateDoctorProfile)
+doctorRouter.post('/update-profile', authDoctor, upload.single('image'), updateDoctorProfile)
 doctorRouter.get('/messages/:appointmentId', authDoctor, getMessages);
 doctorRouter.get('/unread-messages',authDoctor,getUnreadMessagesCount);
 doctorRouter.get('/inbox',authDoctor,getDoctorInbox);

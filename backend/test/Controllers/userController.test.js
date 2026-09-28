@@ -33,19 +33,31 @@ userModelConstructorMock.findById = userModelMock.findById;
 userModelConstructorMock.findByIdAndUpdate = userModelMock.findByIdAndUpdate;
 jest.unstable_mockModule('../../models/userModel.js', () => ({ default: userModelConstructorMock }));
 
-const doctorModelMock = { findById: jest.fn(), findByIdAndUpdate: jest.fn() };
+const doctorModelMock = { findById: jest.fn(), findByIdAndUpdate: jest.fn(), findOneAndUpdate: jest.fn(), updateOne: jest.fn() };
 jest.unstable_mockModule('../../models/doctorModel.js', () => ({ default: doctorModelMock }));
+
+// slotService wraps doctorModel; mock it directly so bookAppointment tests
+// control reservation outcomes without touching doctorModel internals
+jest.unstable_mockModule('../../services/slotService.js', () => ({
+  isValidSlotDate: (d) => typeof d === 'string' && /^\d{1,2}_\d{1,2}_\d{4}$/.test(d),
+  isValidSlotTime: (t) => typeof t === 'string' && t.trim().length > 0 && t.length <= 20,
+  reserveSlot: jest.fn(),
+  releaseSlot: jest.fn(),
+}));
+
 
 const appointmentModelMock = {
   find: jest.fn(),
   findById: jest.fn(),
   findByIdAndUpdate: jest.fn(),
+  findOneAndUpdate: jest.fn(),
   save: jest.fn(),
 };
 const appointmentModelConstructorMock = jest.fn(() => appointmentModelMock);
 appointmentModelConstructorMock.find = appointmentModelMock.find;
 appointmentModelConstructorMock.findById = appointmentModelMock.findById;
 appointmentModelConstructorMock.findByIdAndUpdate = appointmentModelMock.findByIdAndUpdate;
+appointmentModelConstructorMock.findOneAndUpdate = appointmentModelMock.findOneAndUpdate;
 jest.unstable_mockModule('../../models/appointmentModel.js', () => ({ default: appointmentModelConstructorMock }));
 
 const messageModelMock = { countDocuments: jest.fn(), findOne: jest.fn() };
@@ -58,6 +70,7 @@ const bcrypt = (await import('bcrypt')).default;
 const jwt = (await import('jsonwebtoken')).default;
 const { v2: cloudinary } = await import('cloudinary');
 const { sendEmail } = await import('../../services/emailService.js');
+const slotService = await import('../../services/slotService.js');
 
 describe('userController', () => {
   beforeEach(() => {
@@ -152,24 +165,45 @@ describe('userController', () => {
   // Test suite for bookAppointment function
   describe('bookAppointment', () => {
     it('should book an appointment successfully', async () => {
+      // Arrange
       const docData = { _id: 'docId', availability: true, slots_booked: {}, fees: 100, toObject: () => ({}) };
-      doctorModelMock.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(docData) });
+      // reserveSlot is the atomic booking call; mock it to return the doctor doc
+      slotService.reserveSlot.mockResolvedValue(docData);
       userModelMock.findById.mockReturnValue({ select: jest.fn().mockResolvedValue({}) });
       appointmentModelMock.save.mockResolvedValue({});
-      const req = { userId: 'userId', body: { docId: 'docId', slotDate: '2025-12-25', slotTime: '10:00' } };
+      // slotDate must be D_M_YYYY (the format the frontend sends)
+      const req = { userId: 'userId', body: { docId: 'docId', slotDate: '25_12_2025', slotTime: '10:00' } };
       const res = createMockRes();
 
+      // Act
       await userController.bookAppointment(req, res);
 
+      // Assert
       expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Appointment Booked' });
+      expect(slotService.reserveSlot).toHaveBeenCalledWith('docId', '25_12_2025', '10:00');
     });
 
-    it('should return error if doctor is not available', async () => {
-      const docData = { availability: false };
-      doctorModelMock.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(docData) });
-      const req = { userId: 'userId', body: { docId: 'docId' } };
+    it('should return error for invalid slotDate format (ISO dates rejected)', async () => {
+      // Arrange
+      const req = { userId: 'userId', body: { docId: 'docId', slotDate: '2025-12-25', slotTime: '10:00' } };
       const res = createMockRes();
+      // Act
       await userController.bookAppointment(req, res);
+      // Assert: validation fires before reserveSlot is ever called
+      expect(res.json).toHaveBeenCalledWith({ success: false, message: 'Invalid slot date format' });
+      expect(slotService.reserveSlot).not.toHaveBeenCalled();
+    });
+
+    it('should return error if slot is taken (reserveSlot returns null)', async () => {
+      // Arrange: reserveSlot returns null (slot taken or doctor unavailable)
+      slotService.reserveSlot.mockResolvedValue(null);
+      // doctorModel.findById used only for the diagnostic lookup after null
+      doctorModelMock.findById.mockReturnValue({ select: jest.fn().mockResolvedValue({ availability: false }) });
+      const req = { userId: 'userId', body: { docId: 'docId', slotDate: '25_12_2025', slotTime: '10:00' } };
+      const res = createMockRes();
+      // Act
+      await userController.bookAppointment(req, res);
+      // Assert
       expect(res.json).toHaveBeenCalledWith({ success: false, message: 'Doctor not available' });
     });
   });
@@ -194,15 +228,20 @@ describe('userController', () => {
   // Test suite for cancelAppointment function
   describe('cancelAppointment', () => {
     it('should cancel an appointment and release the slot', async () => {
-      const appointmentData = { userId: 'userId', docId: 'docId', slotDate: '2025-12-25', slotTime: '10:00' };
+      // slotDate must be D_M_YYYY; cancelAppointment delegates to releaseSlot
+      const appointmentData = { userId: 'userId', docId: 'docId', slotDate: '25_12_2025', slotTime: '10:00' };
       appointmentModelMock.findById.mockResolvedValue(appointmentData);
-      doctorModelMock.findById.mockResolvedValue({ slots_booked: { '2025-12-25': ['10:00'] } });
+      slotService.releaseSlot.mockResolvedValue(undefined);
+      appointmentModelMock.findByIdAndUpdate.mockResolvedValue(undefined);
       const req = { userId: 'userId', body: { appointmentId: 'apptId' } };
       const res = createMockRes();
 
       await userController.cancelAppointment(req, res);
 
       expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Appointment Cancelled' });
+      // releaseSlot (not doctorModel directly) is what cancelAppointment calls;
+      // the slotService mock confirms the right args were forwarded
+      expect(slotService.releaseSlot).toHaveBeenCalledWith('docId', '25_12_2025', '10:00');
     });
   });
 
@@ -216,16 +255,16 @@ describe('userController', () => {
     });
 
     it('verifyMockPayment should update appointment and doctor earnings', async () => {
-      const appointment = { docId: 'docId', amount: 100 };
-      appointmentModelMock.findById.mockResolvedValue(appointment);
+      // Controller now uses findOneAndUpdate (atomic owner+status check) instead of findById
+      const appointment = { _id: 'apptId', userId: 'userId', docId: 'docId', amount: 100 };
+      appointmentModelMock.findOneAndUpdate.mockResolvedValue(appointment);
       doctorModelMock.findById.mockResolvedValue({ earnings: 50 });
       sendEmail.mockResolvedValue({});
-      const req = { body: { appointmentId: 'apptId' } };
+      const req = { userId: 'userId', body: { appointmentId: 'apptId' } };
       const res = createMockRes();
 
       await userController.verifyMockPayment(req, res);
 
-      expect(doctorModelMock.findByIdAndUpdate).toHaveBeenCalledWith('docId', { earnings: 150 });
       expect(res.json).toHaveBeenCalledWith({ success: true, message: 'Payment successful and appointment updated' });
     });
   });

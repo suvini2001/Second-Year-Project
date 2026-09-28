@@ -85,4 +85,18 @@ describe('authDoctor middleware', () => {
     expect(req.userType).toBe('doctor');
     expect(next).toHaveBeenCalled();
   });
+
+  it('rejects a patient token on doctor routes', () => {
+    // Arrange: valid signature, but the token belongs to a patient
+    const req = { headers: { dtoken: 't' } };
+    const res = mockRes();
+    const next = jest.fn();
+    jwt.verify.mockReturnValue({ id: 'u1', type: 'user' });
+    // Act
+    authDoctor(req, res, next);
+    // Assert
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ success: false, message: 'Invalid token for doctor' });
+    expect(next).not.toHaveBeenCalled();
+  });
 });

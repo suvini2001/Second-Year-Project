@@ -11,7 +11,16 @@ const authDoctor = (req, res, next) => {
         }
 
         const token_decode = jwt.verify(dtoken, process.env.JWT_SECRET);
-        console.log("Decoded token:", token_decode);
+        // Check if the token is for a doctor
+        if (token_decode.type !== 'doctor') {
+            console.log("Token is not for a doctor.");
+            return res.status(401).json({
+                success: false,
+                message: "Invalid token for doctor"
+            });
+        }
+
+
 
         req.docId = token_decode.id; // Set req.docId from the decoded token
         req.userType = token_decode.type; // Pass user type to the request

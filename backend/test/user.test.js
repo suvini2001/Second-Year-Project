@@ -26,7 +26,12 @@ jest.unstable_mockModule('../models/userModel.js', () => {
   return { default: mockUserModel };
 });
 jest.unstable_mockModule('../models/doctorModel.js', () => {
-  const mock = { findById: jest.fn(), findByIdAndUpdate: jest.fn() };
+  const mock = {
+    findById: jest.fn(),
+    findByIdAndUpdate: jest.fn(),
+    findOneAndUpdate: jest.fn(),
+    updateOne: jest.fn(),
+  };
   return { default: mock };
 });
 jest.unstable_mockModule('../models/appointmentModel.js', () => {
@@ -34,6 +39,7 @@ jest.unstable_mockModule('../models/appointmentModel.js', () => {
   mockAppointmentModel.find = jest.fn();
   mockAppointmentModel.findById = jest.fn();
   mockAppointmentModel.findByIdAndUpdate = jest.fn();
+  mockAppointmentModel.findOneAndUpdate = jest.fn();
   return { default: mockAppointmentModel };
 });
 jest.unstable_mockModule('../models/messageModel.js', () => ({
@@ -280,6 +286,35 @@ describe('User API', () => {
       expect(res.body.success).toBe(true);
     });
 
+    it('POST /api/user/update-profile uses userId from JWT token, not req.body (IDOR prevention)', async () => {
+      // Arrange: JWT identifies the logged-in user as 'me'
+      jwt.verify.mockReturnValue({ id: 'me', type: 'user' });
+      userModel.findByIdAndUpdate.mockResolvedValue(undefined);
+      // Act: attacker supplies a different userId ('victim') in the request body
+      const res = await request(app)
+        .post('/api/user/update-profile')
+        .set('token', 't')
+        .send({ userId: 'victim', name: 'Hacked', phone: '000', address: JSON.stringify({}), dob: '2000-01-01', gender: 'M' });
+      // Assert: the DB update must target 'me' (from the token), never 'victim' (from body)
+      expect(res.body.success).toBe(true);
+      expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith('me', expect.any(Object));
+      expect(userModel.findByIdAndUpdate).not.toHaveBeenCalledWith('victim', expect.any(Object));
+    });
+
+    it('POST /api/user/update-profile ignores userId in req.body entirely', async () => {
+      // Arrange: JWT token identifies logged-in user as 'me'
+      jwt.verify.mockReturnValue({ id: 'me', type: 'user' });
+      userModel.findByIdAndUpdate.mockResolvedValue(undefined);
+      // Act: request body omits userId (as MyProfile.jsx does after the fix)
+      const res = await request(app)
+        .post('/api/user/update-profile')
+        .set('token', 't')
+        .send({ name: 'No ID Sent', phone: '077', address: JSON.stringify({ line1: 'A' }), dob: '1999-05-05', gender: 'F' });
+      // Assert: update still succeeds using 'me' from the verified token
+      expect(res.body.success).toBe(true);
+      expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith('me', expect.any(Object));
+    });
+
     it('POST /api/user/book-appointment books slot and creates appointment', async () => {
       // Arrange
       jwt.verify.mockReturnValue({ id: 'u1', type: 'user' });
@@ -288,19 +323,33 @@ describe('User API', () => {
         slots_booked: {}, address: { line1: 'x' },
         toObject: () => ({ _id: 'd1', fees: 10, availability: true, address: { line1: 'x' } })
       };
-      doctorModel.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(doc) });
+      // reserveSlot uses findOneAndUpdate (atomic) instead of findById + findByIdAndUpdate
+      doctorModel.findOneAndUpdate.mockReturnValue({ select: jest.fn().mockResolvedValue(doc) });
       userModel.findById.mockReturnValue({ select: jest.fn().mockResolvedValue({ _id: 'u1', name: 'U' }) });
-      doctorModel.findByIdAndUpdate.mockResolvedValue(undefined);
       const mockSave = jest.fn().mockResolvedValue({ _id: 'a1' });
       appointmentModel.mockImplementation(() => ({ save: mockSave }));
-      // Act
+      // Act — slotDate must be D_M_YYYY (the format the frontend sends)
+      const res = await request(app)
+        .post('/api/user/book-appointment')
+        .set('token', 't')
+        .send({ docId: 'd1', slotDate: '1_1_2025', slotTime: '09:00' });
+      // Assert
+      expect(res.body.success).toBe(true);
+      expect(mockSave).toHaveBeenCalled();
+    });
+
+    it('POST /api/user/book-appointment rejects invalid slotDate format', async () => {
+      // Arrange
+      jwt.verify.mockReturnValue({ id: 'u1', type: 'user' });
+      // Act — old ISO format is now rejected
       const res = await request(app)
         .post('/api/user/book-appointment')
         .set('token', 't')
         .send({ docId: 'd1', slotDate: '2025-01-01', slotTime: '09:00' });
       // Assert
-      expect(res.body.success).toBe(true);
-      expect(mockSave).toHaveBeenCalled();
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Invalid slot date format');
+      expect(doctorModel.findOneAndUpdate).not.toHaveBeenCalled();
     });
 
     it('GET /api/user/appointments returns appointments with unreadCount', async () => {
@@ -323,14 +372,18 @@ describe('User API', () => {
     it('POST /api/user/cancel-appointment releases slot when owner', async () => {
       // Arrange
       jwt.verify.mockReturnValue({ id: 'u1', type: 'user' });
-      appointmentModel.findById.mockResolvedValue({ _id: 'a1', userId: 'u1', docId: 'd1', slotDate: '2025-01-01', slotTime: '09:00' });
-      doctorModel.findById.mockResolvedValue({ slots_booked: { '2025-01-01': ['09:00','10:00'] } });
+      appointmentModel.findById.mockResolvedValue({ _id: 'a1', userId: 'u1', docId: 'd1', slotDate: '1_1_2025', slotTime: '09:00' });
       appointmentModel.findByIdAndUpdate.mockResolvedValue(undefined);
-      doctorModel.findByIdAndUpdate.mockResolvedValue(undefined);
+      // cancelAppointment now uses releaseSlot which calls doctorModel.updateOne ($pull)
+      doctorModel.updateOne.mockResolvedValue({ modifiedCount: 1 });
       // Act
       const res = await request(app).post('/api/user/cancel-appointment').set('token', 't').send({ appointmentId: 'a1' });
       // Assert
       expect(res.body.success).toBe(true);
+      expect(doctorModel.updateOne).toHaveBeenCalledWith(
+        { _id: 'd1' },
+        { $pull: { 'slots_booked.1_1_2025': '09:00' } }
+      );
     });
 
     it('POST /api/user/generate-payment returns mock session', async () => {
@@ -346,12 +399,13 @@ describe('User API', () => {
     it('POST /api/user/verify-payment updates flags and earnings (emails attempted best-effort)', async () => {
       // Arrange
       jwt.verify.mockReturnValue({ id: 'u1', type: 'user' });
-      appointmentModel.findById.mockResolvedValue({ _id: 'a1', amount: 100, docId: 'd1', userData: { email: 'u@e.com' }, docData: { email: 'd@e.com', name: 'Doc' }, slotDate: '2025-01-01', slotTime: '09:00' });
-      appointmentModel.findByIdAndUpdate.mockResolvedValue(undefined);
+      // Controller now uses findOneAndUpdate (atomic owner+status check) instead of findById
+      const mockAppointment = { _id: 'a1', userId: 'u1', amount: 100, docId: 'd1', userData: { email: 'u@e.com' }, docData: { email: 'd@e.com', name: 'Doc' }, slotDate: '2025-01-01', slotTime: '09:00' };
+      appointmentModel.findOneAndUpdate.mockResolvedValue(mockAppointment);
       doctorModel.findById.mockResolvedValue({ earnings: 50, email: 'd@e.com' });
       doctorModel.findByIdAndUpdate.mockResolvedValue(undefined);
-      // Act
-      const res = await request(app).post('/api/user/verify-payment').send({ appointmentId: 'a1' });
+      // Act: route now requires auth — send the token
+      const res = await request(app).post('/api/user/verify-payment').set('token', 't').send({ appointmentId: 'a1' });
       // Assert
       expect(res.body.success).toBe(true);
       // email sends are fire-and-forget and may be bypassed when formatting fails; core DB updates verified above

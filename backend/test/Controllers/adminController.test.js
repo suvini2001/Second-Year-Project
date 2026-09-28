@@ -40,6 +40,13 @@ jest.unstable_mockModule('../../models/doctorModel.js', () => ({
   default: doctorConstructorMock,
 }));
 
+jest.unstable_mockModule('../../services/slotService.js', () => ({
+  isValidSlotDate: (d) => typeof d === 'string' && /^\d{1,2}_\d{1,2}_\d{4}$/.test(d),
+  isValidSlotTime: (t) => typeof t === 'string' && t.trim().length > 0 && t.length <= 20,
+  reserveSlot: jest.fn(),
+  releaseSlot: jest.fn(),
+}));
+
 jest.unstable_mockModule('../../models/appointmentModel.js', () => ({
   __esModule: true,
   default: {
@@ -215,8 +222,8 @@ describe('adminController unit tests', () => {
     it('marks the appointment cancelled and frees the slot', async () => {
       appointmentModel.findById.mockResolvedValue(dummyAppointment);
       appointmentModel.findByIdAndUpdate.mockResolvedValue();
-      Doctor.findById.mockResolvedValue({ slots_booked: { '2025-02-02': ['10:00', '11:00'] } });
-      Doctor.findByIdAndUpdate.mockResolvedValue();
+      const slotService = await import('../../services/slotService.js');
+      slotService.releaseSlot.mockResolvedValue();
 
       const res = createMockRes();
       // Act: admin cancels an appointment so slot must be reopened.
@@ -224,7 +231,7 @@ describe('adminController unit tests', () => {
 
       // Expect write operations on both appointment + doctor collections.
       expect(appointmentModel.findByIdAndUpdate).toHaveBeenCalledWith('appt1', { cancelled: true });
-      expect(Doctor.findByIdAndUpdate).toHaveBeenCalledWith('doc1', { slots_booked: { '2025-02-02': ['11:00'] } });
+      expect(slotService.releaseSlot).toHaveBeenCalledWith('doc1', '2025-02-02', '10:00');
       expect(res.body).toEqual({ success: true, message: 'Appointment Cancelled' });
     });
 
