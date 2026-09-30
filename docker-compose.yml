@@ -3,14 +3,9 @@ services:
     build: ./backend
     env_file: ./backend/.env
     environment:
-      # use the local mongo container; delete this line to keep Atlas
-      MONGODB_URI: mongodb://mongo:27017/docop
       CORS_ORIGINS: http://localhost:5173,http://localhost:5174
     ports:
       - "8000:8000"
-    depends_on:
-      mongo:
-        condition: service_healthy
     restart: unless-stopped
 
   frontend:
@@ -34,15 +29,6 @@ services:
       - "5174:80"
     depends_on:
       - backend
-
-  mongo:
-    image: mongo:7
-    volumes:
-      - mongo-data:/data/db
-    healthcheck:
-      test: [ "CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')" ]
-      interval: 10s
-      retries: 5
 
   postgres:
     image: postgres:16-alpine

@@ -290,3 +290,20 @@ curl -X POST "http://localhost:8000/api/user/test-email" ^
 
 
 
+## Run with Docker
+
+1. Copy `.env.example` to `.env` (root) and fill in the values.
+2. Create `backend/.env` from `backend/.env.example`.
+3. Start everything:
+```bash
+   docker compose up --build
+```
+
+| Service                  |                              URL                 |
+|--------------------------|--------------------------------------------------|
+| Patient site             | http://localhost:5173                            |
+| Admin panel              | http://localhost:5174                            |
+| API                      | http://localhost:8000                            |
+| n8n                      | http://localhost:5678                            |
+
+Stop with `docker compose down`.
