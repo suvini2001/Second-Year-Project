@@ -8,6 +8,7 @@ import appointmentModel from "../models/appointmentModel.js";
 import messageModel from "../models/messageModel.js";
 import crypto from "crypto";
 import { sendEmail } from "../services/emailService.js";
+import { reserveSlot, releaseSlot, isValidSlotDate, isValidSlotTime } from "../services/slotService.js";
 
 
 //API to register a user
@@ -45,7 +46,11 @@ const registerUser = async (req, res) => {
     const newUser = new userModel(userData);
     const user = await newUser.save();
 
-    const token = jwt.sign({ id: user._id, type: 'user' }, process.env.JWT_SECRET);
+    const token = jwt.sign(
+      { id: user._id, type: 'user' },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
 
     res.json({ success: true, token });
   } catch (error) {
@@ -68,7 +73,11 @@ const loginUser = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (isMatch) {
-      const token = jwt.sign({ id: user._id, type: 'user' }, process.env.JWT_SECRET);
+      const token = jwt.sign(
+        { id: user._id, type: 'user' },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      );
       res.json({ success: true, token });
     } else {
       res.json({ success: false, message: "Invalid credentials" });
@@ -95,13 +104,17 @@ const getProfile = async (req, res) => {
 // API to update user profile
 const updateProfile = async (req, res) => {
   try {
-    const { userId, name, phone, address, dob, gender } = req.body;
+    const userId = req.userId; // always the logged-in user, never a value from the request body
+    const { name, phone, address, dob, gender } = req.body;
     const imageFile = req.file;
-
     if (!name || !phone || !dob || !gender) {
       return res.json({ success: false, message: "Data Missing" });
     }
-
+    // Get the user ID from the verified JWT instead of the request body.
+    // Prevents users from providing another person's ID and modifying their profile.
+    // Prevents IDOR (Insecure Direct Object Reference) vulnerabilities.
+    // The client controls req.body, but req.userId comes from the verified authentication token.
+    // Also allows MyProfile.jsx to update the profile without sending a userId.
     await userModel.findByIdAndUpdate(userId, {
       name,
       phone,
@@ -129,44 +142,45 @@ const updateProfile = async (req, res) => {
 // API for book an appointment
 const bookAppointment = async (req, res) => {
   try {
-    const userId = req.userId; // Use req.userId set by authUser middleware
+    const userId = req.userId;
     const { docId, slotDate, slotTime } = req.body;
-    const docData = await doctorModel.findById(docId).select("-password");
+
+    // Validate slotDate strictly: it becomes a MongoDB field path key
+    // (slots_booked.<slotDate>). A value with '.' or '$' could change which
+    // field the update touches — this is the NoSQL injection defence.
+    if (!isValidSlotDate(slotDate)) {
+      return res.json({ success: false, message: "Invalid slot date format" });
+    }
+    if (!isValidSlotTime(slotTime)) {
+      return res.json({ success: false, message: "Invalid slot time" });
+    }
+
+    // Atomically claim the slot. Returns null if:
+    //   - doctor not found
+    //   - doctor is not available
+    //   - slot is already taken (race-condition-safe)
+    const docData = await reserveSlot(docId, slotDate, slotTime);
 
     if (!docData) {
-      return res.json({ success: false, message: "Doctor not found" });
-    }
-
-    if (!docData.availability) {
-      return res.json({ success: false, message: "Doctor not available" });
-    }
-
-    const slots_booked = docData.slots_booked || {};
-
-    if (slots_booked[slotDate]) {
-      if (slots_booked[slotDate].includes(slotTime)) {
-        return res.json({ success: false, message: "Slot not available" });
-      }
-      slots_booked[slotDate].push(slotTime);
-    } else {
-      slots_booked[slotDate] = [slotTime];
+      // Distinguish the three failure reasons for a clear error message
+      const doc = await doctorModel.findById(docId).select("availability");
+      if (!doc)          return res.json({ success: false, message: "Doctor not found" });
+      if (!doc.availability) return res.json({ success: false, message: "Doctor not available" });
+      return res.json({ success: false, message: "Slot not available" });
     }
 
     const userData = await userModel.findById(userId).select("-password");
 
-    await doctorModel.findByIdAndUpdate(docId, { slots_booked });
-
     const cleanDocData = docData.toObject();
     delete cleanDocData.slots_booked; // exclude booked slots when embedding doctor data in appointment record
 
-    // Ensure address is included in the cleanDocData
     const appointmentData = {
       userId,
       docId,
       userData,
       docData: {
         ...cleanDocData,
-        address: docData.address, // Include address explicitly
+        address: docData.address,
       },
       amount: docData.fees,
       slotTime,
@@ -175,7 +189,14 @@ const bookAppointment = async (req, res) => {
     };
 
     const newAppointment = new appointmentModel(appointmentData);
-    await newAppointment.save();
+    try {
+      await newAppointment.save();
+    } catch (saveErr) {
+      // Roll back the slot so it doesn't stay blocked with no appointment attached
+      await releaseSlot(docId, slotDate, slotTime);
+      throw saveErr;
+    }
+
     res.json({ success: true, message: "Appointment Booked" });
   } catch (error) {
     console.log(error);
@@ -213,7 +234,7 @@ const listAppointment = async (req, res) => {
 
 
 // API to cancel appoinments
-const cancelAppointment = async (req,res)=>{
+const cancelAppointment = async (req, res) => {
   try {
     const { appointmentId } = req.body;
     const userId = req.userId;
@@ -225,14 +246,9 @@ const cancelAppointment = async (req,res)=>{
     }
     await appointmentModel.findByIdAndUpdate(appointmentId, { cancelled: true });
 
-    // releasing doctor slot
+    // Release the slot atomically with $pull instead of read → filter → write
     const { docId, slotDate, slotTime } = appointmentData;
-    const doctorData = await doctorModel.findById(docId);
-    let slots_booked = doctorData.slots_booked;
-    if (slots_booked[slotDate]) {
-      slots_booked[slotDate] = slots_booked[slotDate].filter(e => e !== slotTime);
-    }
-    await doctorModel.findByIdAndUpdate(docId, { slots_booked });
+    await releaseSlot(docId, slotDate, slotTime);
     res.json({ success: true, message: "Appointment Cancelled" });
   } catch (error) {
     console.log(error);
@@ -243,52 +259,67 @@ const cancelAppointment = async (req,res)=>{
 
 // API to generate a mock payment session
 const generateMockPayment = (req, res) => {
-    try {
-        const { appointmentId } = req.body;
-        if (!appointmentId) {
-            return res.json({ success: false, message: "Appointment ID is required" });
-        }
-        // Simulate a payment session creation
-        const paymentSession = {
-            sessionId: `mock_session_${appointmentId}_${Date.now()}`,
-            appointmentId,
-            redirectUrl: `${process.env.FRONTEND_URL}/mock-payment/${appointmentId}`
-        };
-        res.json({ success: true, payment: paymentSession });
-    } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: "Failed to generate mock payment session" });
+  try {
+    const { appointmentId } = req.body;
+    if (!appointmentId) {
+      return res.json({ success: false, message: "Appointment ID is required" });
     }
+    // Simulate a payment session creation
+    const paymentSession = {
+      sessionId: `mock_session_${appointmentId}_${Date.now()}`,
+      appointmentId,
+      redirectUrl: `${process.env.FRONTEND_URL}/mock-payment/${appointmentId}`
+    };
+    res.json({ success: true, payment: paymentSession });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: "Failed to generate mock payment session" });
+  }
 }
 
 // API to verify mock payment and update database
 const verifyMockPayment = async (req, res) => {
-    try {
-        const { appointmentId } = req.body;
-        if (!appointmentId) {
-            return res.json({ success: false, message: "Appointment ID is required" });
-        }
-        const appointment = await appointmentModel.findById(appointmentId);
-        if (appointment) {
-            await appointmentModel.findByIdAndUpdate(appointmentId, { payment: true });
-            const doctor = await doctorModel.findById(appointment.docId);
-            if (doctor) {
-                const newEarnings = (doctor.earnings || 0) + appointment.amount;
-                await doctorModel.findByIdAndUpdate(appointment.docId, { earnings: newEarnings });
-            }
-            // Send payment confirmation emails (fire-and-forget)
-            try {
-                const userEmail = appointment?.userData?.email; // embedded snapshot
-                const doctorEmail = appointment?.docData?.email || doctor?.email;
-                const apptDate = appointment.slotDate;
-                const apptTime = appointment.slotTime;
-                const amount = appointment.amount;
+  try {
+    const { appointmentId } = req.body;
+    if (!appointmentId) {
+      return res.json({ success: false, message: "Appointment ID is required" });
+    }
+    // Atomically find and mark paid — only if this user owns it and it isn't already cancelled/paid.
+    // Prevents a race condition where two requests could both pass the check and double-pay.
+    const appointment = await appointmentModel.findOneAndUpdate(
+      {
+        _id: appointmentId,
+        userId: req.userId,
+        cancelled: false,
+        payment: false
+      },
+      { payment: true },
+      { new: true }
+    );
 
-                // Create email subject
-                const subject = `Payment Confirmed - ${apptDate} ${apptTime}`;
+    if (!appointment) {
+      const existing = await appointmentModel.findById(appointmentId);
+      if (existing && String(existing.userId) === String(req.userId) && existing.payment) {
+        return res.json({ success: true, message: "Appointment already paid" });
+      }
+      return res.json({ success: false, message: "Appointment not found or cannot be paid" });
+    }
 
-                 // HTML template for user confirmation email
-                const userHtml = `<!DOCTYPE html><html><body style="font-family:Arial;line-height:1.5;color:#222">
+    if (appointment) {
+      // Send payment confirmation emails (fire-and-forget)
+      try {
+        const doctor = await doctorModel.findById(appointment.docId);
+        const userEmail = appointment?.userData?.email; // embedded snapshot
+        const doctorEmail = appointment?.docData?.email || doctor?.email;
+        const apptDate = appointment.slotDate;
+        const apptTime = appointment.slotTime;
+        const amount = appointment.amount;
+
+        // Create email subject
+        const subject = `Payment Confirmed - ${apptDate} ${apptTime}`;
+
+        // HTML template for user confirmation email
+        const userHtml = `<!DOCTYPE html><html><body style="font-family:Arial;line-height:1.5;color:#222">
                   <h2 style="color:#0a7cff;margin:0 0 12px">Payment Successful</h2>
                   <p>Your appointment is confirmed.</p>
                   <p><strong>Appointment Date and Time:</strong> ${apptDate} ${apptTime}<br/>
@@ -297,8 +328,8 @@ const verifyMockPayment = async (req, res) => {
                   <p style="margin-top:20px">Thank you,<br/>DocOp Team</p>
                 </body></html>`;
 
-                 // HTML template for doctor notification email
-                const doctorHtml = `<!DOCTYPE html><html><body style="font-family:Arial;line-height:1.5;color:#222">
+        // HTML template for doctor notification email
+        const doctorHtml = `<!DOCTYPE html><html><body style="font-family:Arial;line-height:1.5;color:#222">
                   <h2 style="color:#0a7cff;margin:0 0 12px">New Paid Appointment</h2>
                   <p>An appointment has been paid and confirmed.</p>
                   <p><strong>Appointment Date and Time:</strong> ${apptDate} ${apptTime}<br/>
@@ -307,57 +338,57 @@ const verifyMockPayment = async (req, res) => {
                   <p style="margin-top:20px">DocOp Notification</p>
                 </body></html>`;
 
-                // Array to collect email promises
-                const sends = [];
+        // Array to collect email promises
+        const sends = [];
 
-                 // Add user email to send queue if email exists
-                if (userEmail) {
-                  sends.push(sendEmail({ to: userEmail, subject, html: userHtml }));
-                }
-
-                  // Add doctor email to send queue if email exists
-                if (doctorEmail) {
-                  sends.push(sendEmail({ to: doctorEmail, subject: `Patient Paid - ${apptDate} ${apptTime}`, html: doctorHtml }));
-                }
-                
-                // Run concurrently without blocking response; ignore individual failures
-                Promise.allSettled(sends).then(r => {
-                  const failed = r.filter(x => x.status === 'rejected');
-                  if (failed.length) {
-                    console.error('Email send failures (payment confirmation):', failed.map(f=>f.reason?.message||f.reason));
-                  }
-                });
-            } catch (emailErr) {
-                console.error('Payment confirmation email error:', emailErr?.message || emailErr);
-            }
+        // Add user email to send queue if email exists
+        if (userEmail) {
+          sends.push(sendEmail({ to: userEmail, subject, html: userHtml }));
         }
-        res.json({ success: true, message: "Payment successful and appointment updated" });
-    } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: "Payment verification failed" });
+
+        // Add doctor email to send queue if email exists
+        if (doctorEmail) {
+          sends.push(sendEmail({ to: doctorEmail, subject: `Patient Paid - ${apptDate} ${apptTime}`, html: doctorHtml }));
+        }
+
+        // Run concurrently without blocking response; ignore individual failures
+        Promise.allSettled(sends).then(r => {
+          const failed = r.filter(x => x.status === 'rejected');
+          if (failed.length) {
+            console.error('Email send failures (payment confirmation):', failed.map(f => f.reason?.message || f.reason));
+          }
+        });
+      } catch (emailErr) {
+        console.error('Payment confirmation email error:', emailErr?.message || emailErr);
+      }
     }
+    res.json({ success: true, message: "Payment successful and appointment updated" });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: "Payment verification failed" });
+  }
 }
 
 // API to get unread messages count
 const getUnreadMessagesCount = async (req, res) => {
-    try {
-        const userId = req.userId;
-        // Find all appointments for the user
-        const userAppointments = await appointmentModel.find({ userId: userId });
-        const appointmentIds = userAppointments.map(app => app._id);
+  try {
+    const userId = req.userId;
+    // Find all appointments for the user
+    const userAppointments = await appointmentModel.find({ userId: userId });
+    const appointmentIds = userAppointments.map(app => app._id);
 
-        // Count unread messages from doctors
-        const unreadCount = await messageModel.countDocuments({
-            appointmentId: { $in: appointmentIds },
-            senderType: 'doctor',
-            isRead: false
-        });
+    // Count unread messages from doctors
+    const unreadCount = await messageModel.countDocuments({
+      appointmentId: { $in: appointmentIds },
+      senderType: 'doctor',
+      isRead: false
+    });
 
-        res.json({ success: true, unreadCount });
-    } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: "Failed to get unread messages count" });
-    }
+    res.json({ success: true, unreadCount });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: "Failed to get unread messages count" });
+  }
 };
 
 // API to get user inbox (one conversation per appointment) with last message and unread count
@@ -390,7 +421,7 @@ const getUserInbox = async (req, res) => {
             .findOne({ appointmentId: app._id }) //finds any message that belongs to this appointment.returns only the most recent message.
             .sort({ timestamp: -1 }) //sorts messages in descending order of timestamp (newest first).
             .lean(),//again returns a plain object.
-            //b) unreadCount
+          //b) unreadCount
           messageModel.countDocuments({  //counts how many messages match:
             appointmentId: app._id,
             senderType: 'doctor',
@@ -409,10 +440,10 @@ const getUserInbox = async (req, res) => {
           },
           lastMessage: lastMessage  //last message details
             ? {
-                message: lastMessage.message,
-                timestamp: lastMessage.timestamp,
-                senderType: lastMessage.senderType,
-              }
+              message: lastMessage.message,
+              timestamp: lastMessage.timestamp,
+              senderType: lastMessage.senderType,
+            }
             : null,
           unreadCount,  //unread messages
           meta: {

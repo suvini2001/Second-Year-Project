@@ -55,20 +55,20 @@ const MockPayment = () => {
 
   const validateCard = (cardNum, exp, cvv) => {
     const num = cardNum.replace(/\s/g, '')
-    
+
     // Test scenarios
     if (num === '4111111111111111') return { valid: true, message: 'Payment successful' } // Visa success
     if (num === '5555555555554444') return { valid: true, message: 'Payment successful' } // Mastercard success
     if (num === '378282246310005') return { valid: true, message: 'Payment successful' } // Amex success
-    
+
     if (num === '4000000000000002') return { valid: false, message: 'Insufficient funds' } // Visa decline
     if (num === '5105105105105100') return { valid: false, message: 'Card expired' } // Mastercard decline
     if (num === '371449635398431') return { valid: false, message: 'Invalid CVV' } // Amex decline
-    
+
     // Default: check basic format
     if (num.length < 13 || num.length > 19) return { valid: false, message: 'Invalid card number' }
     if (!/^\d+$/.test(num)) return { valid: false, message: 'Card number must contain only digits' }
-    
+
     // Check expiry
     const [month, year] = exp.split('/')
     const currentDate = new Date()
@@ -77,10 +77,10 @@ const MockPayment = () => {
     if (parseInt(year) < currentYear || (parseInt(year) === currentYear && parseInt(month) < currentMonth)) {
       return { valid: false, message: 'Card expired' }
     }
-    
+
     // Check CVV
     if (cvv.length < 3 || cvv.length > 4) return { valid: false, message: 'Invalid CVV' }
-    
+
     return { valid: true, message: 'Payment successful' }
   }
 
@@ -103,15 +103,19 @@ const MockPayment = () => {
       toast.error('Please fill all payment details')
       return
     }
-    
+
     const validation = validateCard(cardNumber, expiry, cvv)
     if (!validation.valid) {
       toast.error(validation.message)
       return
     }
-    
+
     try {
-      const { data } = await axios.post(`${backendUrl}/api/user/verify-payment`, { appointmentId })
+      const { data } = await axios.post(
+        `${backendUrl}/api/user/verify-payment`,
+        { appointmentId },
+        { headers: { token } }
+      )
       if (data.success) {
         toast.success(validation.message)
         navigate('/my-appointments')

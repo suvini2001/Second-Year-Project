@@ -31,44 +31,22 @@ Helpful notes:
 
 - These badges above display live, at-a-glance status for the three deployments (production). If you maintain a separate staging environment you can add additional shields.io / Vercel / Render status badges here.
 - Recommended browsers: Chrome, Edge, Firefox (desktop and modern mobile browsers are supported but desktop offers the best admin UX).
-- API health check: hit `https://docop-backend.onrender.com` in your browser or `GET /api/health` (if implemented) to confirm the backend is responding.
+- API health check: use `GET /api/health` (e.g. hit `https://docop-backend.onrender.com/api/health`) to confirm the backend is responding and connected to the database.
 
 
 
 
 
-## Features
+## Security & Reliability
 
-### For Users (frontend/)
-- Browse doctors by specialty
-- Book, view, and manage appointments
-- User authentication (login/register)
-- Profile management
-- Mock payment integration
-- Real‑time, appointment‑scoped chat with your doctor (Socket.IO)
-- Unread message badges with automatic read-on-open
-
-### For Admins (admin/)
-- Admin authentication
-- Dashboard with statistics
-- Add, edit, and remove doctors
-- View all appointments and users
-
-### For Doctors (admin/)
-- Doctor authentication
-- View and manage their appointments
-- Update profile and availability
-- Real‑time chat with patients for each appointment
-- Inbox view with last message preview and unread counts
-
-### Backend (backend/)
-- RESTful API for all operations
-- JWT-based authentication for users, doctors, and admins
-- MongoDB for data storage
-- Cloudinary integration for image uploads
-- Secure password hashing
-- Socket.IO for real‑time messaging (JWT-authenticated WebSocket connections)
-- Transactional email via Brevo (Sendinblue) for notifications
+The application has been hardened to prevent common web vulnerabilities and ensure reliable operation:
+- **Strict Role-Based Access Control:** Strong JWT validation rejects unauthorized tokens and spoofed roles.
+- **Data Protection:** Profile updates use safe allowlists and authenticated user IDs to prevent IDOR and mass assignment.
+- **Atomic Operations:** Concurrent booking and payment flows use atomic database operations (`$push`, `$pull`, `$ne`) to prevent race conditions and double-booking.
+- **Hardened Configuration:** `CORS_ORIGINS` strictly controls allowed domains, and database credentials are removed from startup logs.
+- **Health Probes:** A robust `GET /api/health` endpoint allows Docker and Kubernetes to accurately monitor application readiness.
+- **Idempotency:** Payment endpoints safely handle repeated requests without side effects.
+- **Documentation:** For full details on these security features, see [Phase 0 – Security & Reliability Hardening](docs/PHASE0_SECURITY_HARDENING.md).
 
 ---
 
@@ -113,36 +91,7 @@ Frontend notes
 
 ---
 
-## Getting Started
 
-### Prerequisites
-
-- Node.js (v18+ recommended)
-- MongoDB database
-- Cloudinary account (for image uploads)
-
-### Environment Variables
-
-Create a `.env` file in the `backend/` directory with the following variables:
-
-```
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
-CLOUDINARY_API_KEY=your_cloudinary_api_key
-CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-PORT=8000
-# 2YP Medical Appointment System
-
-A full-stack web application for managing medical appointments, featuring real-time chat and file sharing. This project provides separate interfaces for patients, doctors, and administrators, built with the MERN stack (MongoDB, Express, React, Node.js) and integrated with Socket.IO and Cloudinary.
-
-## Project Structure
-
-The repository is a monorepo containing three distinct applications:
-
--   `backend/`: The core of the system. A Node.js/Express REST API that handles business logic, database interactions (MongoDB), user authentication (JWT), and real-time communication (Socket.IO).
--   `frontend/`: A React-based single-page application (built with Vite) for patients. It allows them to browse doctors, book appointments, and communicate with their assigned doctor.
--   `admin/`: A separate React-based single-page application (built with Vite) that serves as a combined portal for both system administrators and doctors.
 
 ---
 
@@ -219,14 +168,18 @@ The chat system is built with Socket.IO and provides secure, private, and persis
 
 1.  Navigate to the `backend` directory: `cd backend`
 2.  Install dependencies: `npm install`
-3.  Create a `.env` file and add the following variables:
+3.  Copy the example environment file and configure it:
+    `cp .env.example .env` (or manually copy `backend/.env.example` to `backend/.env`)
+
+    Ensure the following variables are set in your `.env`:
 
     ```env
     # MongoDB Connection
     MONGODB_URI=your_mongodb_connection_string
 
-    # JWT Secret
+    # JWT Configuration
     JWT_SECRET=a_strong_and_secret_key
+    JWT_EXPIRES_IN=7d
 
     # Cloudinary Credentials
     CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
@@ -245,8 +198,8 @@ The chat system is built with Socket.IO and provides secure, private, and persis
     EMAIL_FROM=docopservice@docop.me
     EMAIL_FROM_NAME=DocOp
 
-    # Frontend URL for CORS
-    FRONTEND_URL=http://localhost:5173
+    # Frontend URL for CORS (comma-separated for multiple origins)
+    CORS_ORIGINS=http://localhost:5173,http://localhost:5174
     ```
 
 4.  Start the backend server: `npm run server`
@@ -337,3 +290,20 @@ curl -X POST "http://localhost:8000/api/user/test-email" ^
 
 
 
+## Run with Docker
+
+1. Copy `.env.example` to `.env` (root) and fill in the values.
+2. Create `backend/.env` from `backend/.env.example`.
+3. Start everything:
+```bash
+   docker compose up --build
+```
+
+| Service                  |                              URL                 |
+|--------------------------|--------------------------------------------------|
+| Patient site             | http://localhost:5173                            |
+| Admin panel              | http://localhost:5174                            |
+| API                      | http://localhost:8000                            |
+| n8n                      | http://localhost:5678                            |
+
+Stop with `docker compose down`.

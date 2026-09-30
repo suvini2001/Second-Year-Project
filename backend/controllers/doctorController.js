@@ -3,6 +3,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import appointmentModel from "../models/appointmentModel.js";
 import messageModel from "../models/messageModel.js";
+import { v2 as cloudinary } from "cloudinary";
+import { releaseSlot } from "../services/slotService.js";
 
 const changeAvailability = async (req, res) => {
   try {
@@ -54,7 +56,11 @@ const loginDoctor = async (req, res) => {
     const isMatch = await bcrypt.compare(password, doctor.password);
 
     if (isMatch) {
-      const token = jwt.sign({ id: doctor._id, type: 'doctor' }, process.env.JWT_SECRET);
+      const token = jwt.sign(
+        { id: doctor._id, type: 'doctor' },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      );
       return res.json({ success: true, token });
     } else {
       return res.json({ success: false, message: "Invalid credentials" });
@@ -160,6 +166,10 @@ const appointmentCancel = async (req, res) => {
     await appointmentModel.findByIdAndUpdate(appointmentId, {
       cancelled: true,
     });
+    
+    // free the doctor slot
+    await releaseSlot(appointmentData.docId, appointmentData.slotDate, appointmentData.slotTime);
+
     return res.json({
       success: true,
       message: "Appointment cancelled successfully",
@@ -224,25 +234,33 @@ const updateDoctorProfile = async (req, res) => {
     // 1. Get the docId from the auth middleware (NOT req.body)
     const docId = req.docId;
 
-    // 2. Get all the fields you sent from the frontend
-    // Accept any fields for partial update
-    let update = { ...req.body };
-    // Parse address if sent as JSON string
-    if (typeof update.address === "string") {
-      try {
-        update.address = JSON.parse(update.address);
-      } catch {
-        /* keep as is */
+    // 2. Build an allowlist update — only permit known, safe fields.
+    // Prevents a doctor from writing arbitrary fields (e.g. email, password, role) by
+    // injecting them into the request body.
+    const body = req.body || {};
+    const update = {};
+
+    if (body.about !== undefined) update.about = String(body.about);
+
+    if (body.fees !== undefined) {
+      const fees = Number(body.fees);
+      if (!Number.isFinite(fees) || fees < 0)
+        return res.json({ success: false, message: "Invalid fees" });
+      update.fees = fees;
+    }
+
+    if (body.address !== undefined) {
+      let address = body.address;
+      if (typeof address === "string") {
+        try { address = JSON.parse(address); } catch { /* keep as string */ }
       }
+      update.address = address;
     }
-    // Convert available to boolean if string
-    if (typeof update.available === "string") {
-      update.available = update.available === "true";
-    }
-    // Remove undefined fields (only update provided fields)
-    Object.keys(update).forEach(key => {
-      if (update[key] === undefined) delete update[key];
-    });
+
+    // Accept both `availability` and `available` from the frontend
+    const avail = body.availability ?? body.available;
+    if (avail === true  || avail === "true")  update.availability = true;
+    if (avail === false || avail === "false") update.availability = false;
 
     // Optional image upload
     const imageFile = req.file;
@@ -313,7 +331,7 @@ const getDoctorInbox = async (req, res) => {
             .findOne({ appointmentId: app._id }) //finds any message that belongs to this appointment.returns only the most recent message.
             .sort({ timestamp: -1 }) //sorts messages in descending order of timestamp (newest first).
             .lean(),//again returns a plain object.
-            //b) unreadCount
+          //b) unreadCount
           messageModel.countDocuments({  // counts how many messages match:
             appointmentId: app._id,
             senderType: 'user',
@@ -328,14 +346,14 @@ const getDoctorInbox = async (req, res) => {
             id: app.userData?._id || app.userData?.id || undefined,  //handle inconsistent data (some DBs might store doctor ID under _id, others under id)
             name: app.userData?.name,
             image: app.userData?.image,
-            
+
           },
           lastMessage: lastMessage  //last message details
             ? {
-                message: lastMessage.message,
-                timestamp: lastMessage.timestamp,
-                senderType: lastMessage.senderType,
-              }
+              message: lastMessage.message,
+              timestamp: lastMessage.timestamp,
+              senderType: lastMessage.senderType,
+            }
             : null,
           unreadCount,  //unread messages
           meta: {
@@ -374,5 +392,5 @@ export {
   updateDoctorProfile,
   getUnreadMessagesCount,
   getDoctorInbox,
-  
+
 };

@@ -23,13 +23,20 @@ const app = express(); // create express app instance use this to define the rou
 const PORT = process.env.PORT || 8000; // define the port for the server
 const emailApiKey = process.env.BREVO_API_KEY; // available for future email-related health checks
 
+// Allowed browser origins come from the environment so each deployment
+// (local, Docker, Render, Kubernetes) can set its own list without code changes.
+const allowedOrigins = (
+  process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:5174"
+)
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+const corsOptions = { origin: allowedOrigins, credentials: true };
+
 const server = http.createServer(app);
 const io = new Server(server, {
   path: "/socket.io/",
-  cors: {
-    origin: ["http://localhost:5173", "http://localhost:5174"], // Vite dev servers
-    credentials: true,
-  },
+  cors: corsOptions,
 });
 
 // Expose io for controllers that need to emit outside socket handlers (e.g., after REST reads)
@@ -135,7 +142,7 @@ io.on("connection", (socket) => {
       //checks if ack is actually a function before calling it (to avoid errors if the client didn’t pass one).
       try {
         if (typeof ack === "function") ack(payload);
-      } catch (_) {} //ensures that even if something goes wrong in the client’s ack, the server won’t crash.
+      } catch (_) { } //ensures that even if something goes wrong in the client’s ack, the server won’t crash.
     };
 
     try {
@@ -328,7 +335,7 @@ io.on("connection", (socket) => {
     const reply = (payload) => {
       try {
         if (typeof ack === "function") ack(payload);
-      } catch (_) {}
+      } catch (_) { }
     };
 
     //Extract and validate appointmentId
@@ -405,8 +412,22 @@ mongoose.connection.once("open", async () => {
 });
 
 // middlewares
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
+
+const DB_STATES = ["disconnected", "connected", "connecting", "disconnecting"];
+app.get("/api/health", (req, res) => {
+  const state = mongoose.connection.readyState; // 1 = connected
+  const healthy = state === 1;
+  res.status(healthy ? 200 : 503).json({
+    status: healthy ? "ok" : "degraded",
+    db: DB_STATES[state] || "unknown",
+    uptime: Math.round(process.uptime()),
+  });
+});
+
+// Docker's HEALTHCHECK, Kubernetes liveness and readiness probes, uptime monitors, and n8n all need one URL that answers "is this service working?".
+// Kubernetes uses the answer to stop sending traffic to a broken pod and to restart it.
 
 // simple request logger to help debug missing routes
 app.use((req, res, next) => {
@@ -439,3 +460,28 @@ export { app, server };
 
 //basic moderation
 //checks a message to prevent bad words,obvious spam,repeated characters,harmful or inappropriate content
+
+
+// CORS (Cross-Origin Resource Sharing) controls which frontend origins
+// are allowed to communicate with this backend from a browser.
+
+// Previously, app.use(cors()) allowed requests from any origin.
+// This is too permissive, especially when deploying the application.
+
+// Read allowed frontend origins from the environment so the same code
+// can be used in development, Docker, and production without changes.
+
+// Example:
+// CORS_ORIGINS=http://localhost:5173,http://localhost:5174
+// Production:
+// CORS_ORIGINS=https://docop.me,https://admin.docop.me
+
+// Keep the allowed origins in one configuration so both Express API
+// requests and Socket.IO connections follow the same CORS policy.
+
+// credentials: true allows credentialed cross-origin requests,
+// such as requests that include cookies or other browser credentials.
+// It does NOT replace authentication or authorization.
+
+// Restricting CORS improves browser-side security by preventing
+// unauthorized websites from using this backend through a user's browser.

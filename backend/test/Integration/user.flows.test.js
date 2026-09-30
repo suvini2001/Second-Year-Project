@@ -31,7 +31,7 @@ const createUserModelMock = () => {
 };
 
 const createDoctorModelMock = () => {
-  return { default: { findById: jest.fn(), find: jest.fn(), findByIdAndUpdate: jest.fn() } };
+  return { default: { findById: jest.fn(), find: jest.fn(), findByIdAndUpdate: jest.fn(), findOneAndUpdate: jest.fn(), updateOne: jest.fn() } };
 };
 
 const createAppointmentModelMock = () => {
@@ -39,6 +39,7 @@ const createAppointmentModelMock = () => {
   Mock.find = jest.fn();
   Mock.findById = jest.fn();
   Mock.findByIdAndUpdate = jest.fn();
+  Mock.findOneAndUpdate = jest.fn();
   Mock.prototype.save = jest.fn();
   return { default: Mock };
 };
@@ -64,6 +65,15 @@ jest.unstable_mockModule('../../models/appointmentModel.js', createAppointmentMo
 jest.unstable_mockModule('../../models/messageModel.js', createMessageModelMock);
 
 jest.unstable_mockModule('../../services/emailService.js', () => ({ sendEmail: jest.fn().mockResolvedValue({}) }));
+
+// slotService uses doctorModel; mock the whole module so integration tests
+// control reserveSlot outcomes via doctorModel.findOneAndUpdate
+jest.unstable_mockModule('../../services/slotService.js', () => ({
+  isValidSlotDate: (d) => typeof d === 'string' && /^\d{1,2}_\d{1,2}_\d{4}$/.test(d),
+  isValidSlotTime: (t) => typeof t === 'string' && t.trim().length > 0 && t.length <= 20,
+  reserveSlot: jest.fn(),
+  releaseSlot: jest.fn(),
+}));
 
 jest.unstable_mockModule('bcrypt', () => ({
   default: { genSalt: jest.fn(), hash: jest.fn(), compare: jest.fn() }
@@ -107,6 +117,7 @@ const appointmentModel = (await import('../../models/appointmentModel.js')).defa
 const messageModel = (await import('../../models/messageModel.js')).default;
 const bcrypt = (await import('bcrypt')).default;
 const jwt = (await import('jsonwebtoken')).default;
+const slotService = await import('../../services/slotService.js');
 
 /* -----------------------------
    Helper utilities for tests
@@ -224,12 +235,13 @@ describe('User end-to-end flow — Enterprise tests', () => {
       toObject: () => ({ _id: 'd1', fees: 100, availability: true, address: { line1: 'x' } })
     };
 
-    // doctorModel.findById will be called multiple times in sequence by the flow.
-    // Use mockImplementationOnce to be explicit and deterministic.
-    doctorModel.findById
-      .mockImplementationOnce(() => ({ select: () => Promise.resolve(docToBook) })) // booking
-      .mockImplementationOnce(() => Promise.resolve({ earnings: 50, email: 'd@e.com' })) // verify-payment
-      .mockImplementationOnce(() => Promise.resolve({ slots_booked: { '2025-01-01': ['09:00'] } })); // cancel
+    // reserveSlot (atomic booking) — returns the doctor doc on success
+    slotService.reserveSlot.mockResolvedValue({
+      ...docToBook,
+      toObject: () => ({ _id: 'd1', fees: 100, availability: true, address: { line1: 'x' } })
+    });
+    // releaseSlot (used by cancel) — no-op mock
+    slotService.releaseSlot.mockResolvedValue(undefined);
 
     // userModel.findById -> used for embedding user details when booking
     userModel.findById.mockImplementation(() => ({ select: () => Promise.resolve({ _id: 'u1', name: 'User' }) }));
@@ -237,27 +249,32 @@ describe('User end-to-end flow — Enterprise tests', () => {
     // appointmentModel save mock
     const apptSave = createAppointmentSaveMock('a1');
 
-    // appointmentModel.findById sequence used by verify-payment and cancel
-    appointmentModel.findById
+    // verify-payment uses findOneAndUpdate (atomic); cancel uses findById for ownership check
+    appointmentModel.findOneAndUpdate
       .mockResolvedValueOnce({
         _id: 'a1',
+        userId: 'u1',
         amount: 100,
         docId: 'd1',
         userData: { email: 'u@e.com' },
         docData: { email: 'd@e.com', name: 'Doc' },
-        slotDate: '2025-01-01',
+        slotDate: '1_1_2025',
         slotTime: '09:00'
-      })
+      });
+
+    appointmentModel.findById
       .mockResolvedValueOnce({
         _id: 'a1',
         userId: 'u1',
         docId: 'd1',
-        slotDate: '2025-01-01',
+        slotDate: '1_1_2025',
         slotTime: '09:00'
       });
 
     appointmentModel.findByIdAndUpdate.mockResolvedValue(undefined);
     doctorModel.findByIdAndUpdate.mockResolvedValue(undefined);
+    doctorModel.findById
+      .mockImplementationOnce(() => Promise.resolve({ earnings: 50, email: 'd@e.com' })); // verify-payment earnings lookup
 
     // ---------- Act & Assert: Register ----------
     let res = await request(app)
@@ -283,7 +300,7 @@ describe('User end-to-end flow — Enterprise tests', () => {
     res = await request(app)
       .post('/api/user/book-appointment')
       .set('token', authToken)
-      .send({ docId: 'd1', slotDate: '2025-01-01', slotTime: '09:00' });
+      .send({ docId: 'd1', slotDate: '1_1_2025', slotTime: '09:00' });
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('success', true);
@@ -301,8 +318,10 @@ describe('User end-to-end flow — Enterprise tests', () => {
     expect(res.body.payment).toHaveProperty('sessionId');
 
     // ---------- Act & Assert: Verify payment ----------
+    // verify-payment now requires auth token (authUser middleware added to route)
     res = await request(app)
       .post('/api/user/verify-payment')
+      .set('token', authToken)
       .send({ appointmentId: 'a1' });
 
     expect(res.status).toBe(200);

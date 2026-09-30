@@ -99,15 +99,21 @@ jest.unstable_mockModule('jsonwebtoken', () => ({
   }
 }));
 
+let shouldFailUpload = false;
+
 jest.unstable_mockModule('cloudinary', () => ({
+  __esModule: true,
   v2: {
     uploader: { 
-      upload: jest.fn().mockResolvedValue({ 
-        secure_url: 'https://cloudinary.com/doctor.png', 
-        public_id: 'doctor123',
-        resource_type: 'image',
-        type: 'upload'
-      }) 
+      upload: jest.fn().mockImplementation((path, opts) => {
+        if (shouldFailUpload) return Promise.reject(new Error('Upload failed'));
+        return Promise.resolve({
+          secure_url: 'https://cloudinary.com/doctor.png', 
+          public_id: 'doctor123',
+          resource_type: 'image',
+          type: 'upload'
+        });
+      })
     },
     url: jest.fn().mockImplementation(id => `https://cloudinary.com/${id}`)
   }
@@ -215,13 +221,8 @@ function resetAllMocks() {
   bcrypt.hash.mockResolvedValue('hashed');
   bcrypt.compare.mockResolvedValue(true);
   
-  // Reset cloudinary mock
-  cloudinary.uploader.upload.mockResolvedValue({
-    secure_url: 'https://cloudinary.com/doctor.png',
-    public_id: 'doctor123',
-    resource_type: 'image',
-    type: 'upload'
-  });
+  shouldFailUpload = false;
+  // Reset other mocks if needed
 }
 
 /**
@@ -707,7 +708,7 @@ describe('Admin Integration Tests — Complete Flows', () => {
       const adminToken = loginAsAdmin();
       const doctorData = createSampleDoctorData();
       
-      cloudinary.uploader.upload.mockRejectedValue(new Error('Upload failed'));
+      shouldFailUpload = true;
 
       const res = await request(app)
         .post('/api/admin/add-doctor')

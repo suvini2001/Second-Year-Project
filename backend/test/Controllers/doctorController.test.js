@@ -52,16 +52,19 @@ jest.unstable_mockModule('jsonwebtoken', () => ({
 	default: { sign: jest.fn() },
 }));
 
+jest.unstable_mockModule('cloudinary', () => ({
+	__esModule: true,
+	v2: {
+		uploader: {
+			upload: jest.fn(),
+		},
+	},
+}));
+
+const cloudinary = (await import('cloudinary')).v2;
 const bcrypt = (await import('bcrypt')).default;
 const jwt = (await import('jsonwebtoken')).default;
 const doctorController = await import('../../controllers/doctorController.js');
-
-// Provide a global cloudinary stub because the controller references it without importing.
-global.cloudinary = {
-	uploader: {
-		upload: jest.fn(),
-	},
-};
 
 describe('doctorController unit coverage', () => {
 	beforeEach(() => {
@@ -121,7 +124,11 @@ describe('doctorController unit coverage', () => {
 			// Provide credentials and expect a signed token back.
 			await doctorController.loginDoctor({ body: { email: 'doc@example.com', password: 'pw' } }, res);
 
-			expect(jwt.sign).toHaveBeenCalledWith({ id: 'doc1', type: 'doctor' }, process.env.JWT_SECRET);
+			expect(jwt.sign).toHaveBeenCalledWith(
+			    { id: 'doc1', type: 'doctor' },
+			    process.env.JWT_SECRET,
+			    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+			);
 			expect(res.json).toHaveBeenCalledWith({ success: true, token: 'signed' });
 		});
 
@@ -243,7 +250,7 @@ describe('doctorController unit coverage', () => {
 	describe('updateDoctorProfile', () => {
 		it('parses address json, strips undefined keys, and uploads optional image', async () => {
 			doctorModelMock.findByIdAndUpdate.mockResolvedValue();
-			global.cloudinary.uploader.upload.mockResolvedValue({ secure_url: 'https://img' });
+			cloudinary.uploader.upload.mockResolvedValue({ secure_url: 'https://img' });
 			const req = {
 				docId: 'doc1',
 				body: { address: '{"city":"NY"}', about: 'Bio', optional: undefined },
@@ -254,7 +261,7 @@ describe('doctorController unit coverage', () => {
 			// This ensures both JSON parsing and optional image upload behavior.
 			await doctorController.updateDoctorProfile(req, res);
 
-			expect(global.cloudinary.uploader.upload).toHaveBeenCalledWith('/tmp/img.png', { resource_type: 'image' });
+			expect(cloudinary.uploader.upload).toHaveBeenCalledWith('/tmp/img.png', { resource_type: 'image' });
 			expect(doctorModelMock.findByIdAndUpdate).toHaveBeenCalledWith('doc1', expect.objectContaining({
 				address: { city: 'NY' },
 				about: 'Bio',
