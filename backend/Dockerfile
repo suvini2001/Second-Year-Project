@@ -1,5 +1,5 @@
 #backend/Dockerfile
-FROm node:20-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 # 3) now copy the rest of the code
 COPY . .
 
-ENV NODE_ENV = production 
+ENV NODE_ENV=production 
 
 # 4) drop root : the node image ships a user called "node"
 USER node
