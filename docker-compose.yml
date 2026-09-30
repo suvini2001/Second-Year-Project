@@ -4,6 +4,9 @@ services:
     env_file: ./backend/.env
     environment:
       CORS_ORIGINS: http://localhost:5173,http://localhost:5174
+      DOCOP_WEBHOOK_SECRET: ${DOCOP_WEBHOOK_SECRET}
+      DOCOP_INTERNAL_KEY: ${DOCOP_INTERNAL_KEY}
+      N8N_WEBHOOK_BASE: http://n8n:5678/webhook
     ports:
       - "8000:8000"
     restart: unless-stopped
@@ -44,7 +47,7 @@ services:
       retries: 5
 
   n8n:
-    image: n8nio/n8n:latest # pin a version once it works
+    image: n8nio/n8n:2.39.6
     environment:
       DB_TYPE: postgresdb
       DB_POSTGRESDB_HOST: postgres
@@ -53,6 +56,18 @@ services:
       DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD}
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
       GENERIC_TIMEZONE: Asia/Colombo
+      TZ: Asia/Colombo
+      # keep only 7 days of execution history
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: "168"
+      # privacy + fewer surprises
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_PERSONALIZATION_ENABLED: "false"
+      # let workflows read the two secrets via $env
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      DOCOP_WEBHOOK_SECRET: ${DOCOP_WEBHOOK_SECRET}
+      DOCOP_INTERNAL_KEY: ${DOCOP_INTERNAL_KEY}
+      DOCOP_API_URL: http://backend:8000
     ports:
       - "5678:5678"
     volumes:
@@ -60,6 +75,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      retries: 3
   # mcp-server:        # added in a later phase
   #   build: ./mcp-server
 
