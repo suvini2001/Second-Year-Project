@@ -1,4 +1,5 @@
 import express from "express"; // so can create API routes
+import mongoose from "mongoose";
 import authInternal from "../middleware/authInternal.js";
 import appointmentModel from "../models/appointmentModel.js";
 // use it to find appointments ,Update appointments and count appointments
@@ -27,6 +28,9 @@ router.get("/appointments/due-reminders", async (req, res) => {
 });
 // Mark a reminder as sent. Only succeeds once per appointment.
 router.post("/appointments/:id/reminder-sent", async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+        return res.status(400).json({ success: false, message: "Bad id" });
+    }
     const updated = await appointmentModel.findOneAndUpdate(
         { _id: req.params.id, reminderSentAt: null },
         { $set: { reminderSentAt: new Date() } }
