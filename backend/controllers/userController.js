@@ -9,6 +9,7 @@ import messageModel from "../models/messageModel.js";
 import crypto from "crypto";
 import { sendEmail } from "../services/emailService.js";
 import { reserveSlot, releaseSlot, isValidSlotDate, isValidSlotTime } from "../services/slotService.js";
+import { emitEvent } from "../services/eventService.js";
 
 
 //API to register a user
@@ -197,6 +198,16 @@ const bookAppointment = async (req, res) => {
       throw saveErr;
     }
 
+    emitEvent("appointment.booked", {
+      appointmentId: newAppointment._id,
+      patientName: userData.name,
+      patientEmail: userData.email,
+      doctorName: docData.name,
+      doctorEmail: docData.email,
+      slotDate,
+      slotTime,
+    });
+
     res.json({ success: true, message: "Appointment Booked" });
   } catch (error) {
     console.log(error);
@@ -249,6 +260,18 @@ const cancelAppointment = async (req, res) => {
     // Release the slot atomically with $pull instead of read → filter → write
     const { docId, slotDate, slotTime } = appointmentData;
     await releaseSlot(docId, slotDate, slotTime);
+
+    emitEvent("appointment.cancelled", {
+      appointmentId,
+      patientName: appointmentData.userData?.name,
+      patientEmail: appointmentData.userData?.email,
+      doctorName: appointmentData.docData?.name,
+      doctorEmail: appointmentData.docData?.email,
+      slotDate,
+      slotTime,
+      cancelledBy: "patient",
+    });
+
     res.json({ success: true, message: "Appointment Cancelled" });
   } catch (error) {
     console.log(error);
@@ -362,6 +385,18 @@ const verifyMockPayment = async (req, res) => {
         console.error('Payment confirmation email error:', emailErr?.message || emailErr);
       }
     }
+
+    emitEvent("appointment.paid", {
+      appointmentId,
+      patientName: appointment.userData?.name,
+      patientEmail: appointment.userData?.email,
+      doctorName: appointment.docData?.name,
+      doctorEmail: appointment.docData?.email,
+      slotDate: appointment.slotDate,
+      slotTime: appointment.slotTime,
+      amount: appointment.amount,
+    });
+
     res.json({ success: true, message: "Payment successful and appointment updated" });
   } catch (error) {
     console.log(error);

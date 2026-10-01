@@ -5,6 +5,7 @@ import appointmentModel from "../models/appointmentModel.js";
 import messageModel from "../models/messageModel.js";
 import { v2 as cloudinary } from "cloudinary";
 import { releaseSlot } from "../services/slotService.js";
+import { emitEvent } from "../services/eventService.js";
 
 const changeAvailability = async (req, res) => {
   try {
@@ -130,6 +131,17 @@ const appointmentComplete = async (req, res) => {
     await appointmentModel.findByIdAndUpdate(appointmentId, {
       isCompleted: true,
     });
+
+    emitEvent("appointment.completed", {
+      appointmentId,
+      patientName: appointmentData.userData?.name,
+      patientEmail: appointmentData.userData?.email,
+      doctorName: appointmentData.docData?.name,
+      doctorEmail: appointmentData.docData?.email,
+      slotDate: appointmentData.slotDate,
+      slotTime: appointmentData.slotTime,
+    });
+
     return res.json({
       success: true,
       message: "Appointment marked as completed",
@@ -169,6 +181,17 @@ const appointmentCancel = async (req, res) => {
     
     // free the doctor slot
     await releaseSlot(appointmentData.docId, appointmentData.slotDate, appointmentData.slotTime);
+
+    emitEvent("appointment.cancelled", {
+      appointmentId,
+      patientName: appointmentData.userData?.name,
+      patientEmail: appointmentData.userData?.email,
+      doctorName: appointmentData.docData?.name,
+      doctorEmail: appointmentData.docData?.email,
+      slotDate: appointmentData.slotDate,
+      slotTime: appointmentData.slotTime,
+      cancelledBy: "doctor",
+    });
 
     return res.json({
       success: true,

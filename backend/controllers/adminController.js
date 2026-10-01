@@ -168,6 +168,7 @@ const appointmentsAdmin = async (req, res) => {
 
 // API to cancel appointments - copied by user-cancel
 import { releaseSlot } from "../services/slotService.js";
+import { emitEvent } from "../services/eventService.js";
 
 const appointmentCancel = async (req, res) => {
   try {
@@ -202,6 +203,17 @@ const appointmentCancel = async (req, res) => {
     if (docId) {
       await releaseSlot(docId, slotDate, slotTime);
     }
+
+    emitEvent("appointment.cancelled", {
+      appointmentId,
+      patientName: appt.userData?.name,
+      patientEmail: appt.userData?.email,
+      doctorName: appt.docData?.name,
+      doctorEmail: appt.docData?.email,
+      slotDate,
+      slotTime,
+      cancelledBy: "admin",
+    });
 
     return res.json({ success: true, message: "Appointment Cancelled" });
   } catch (error) {

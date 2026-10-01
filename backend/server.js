@@ -6,6 +6,7 @@ import connectCloudinary from "./config/cloudnary.js";
 import adminRouter from "./routes/adminRoute.js";
 import doctorRouter from "./routes/doctorRoute.js";
 import userRouter from "./routes/userRoute.js";
+import internalRouter from "./routes/internalRoute.js";
 import { Server } from "socket.io";
 import http from "http";
 import jwt from "jsonwebtoken";
@@ -442,6 +443,7 @@ app.use("/api/admin", adminRouter);
 
 app.use("/api/doctor", doctorRouter);
 app.use("/api/user", userRouter);
+app.use("/api/internal", internalRouter);
 
 //api endpoints
 
