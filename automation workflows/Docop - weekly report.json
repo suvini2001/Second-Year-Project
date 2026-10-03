@@ -1,0 +1,112 @@
+{
+    "name": "DocOp – Weekly report",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "weeks",
+                            "triggerAtDay": [
+                                1
+                            ],
+                            "triggerAtHour": 8
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                0,
+                0
+            ],
+            "id": "9a9474cd-61bd-4f60-8956-0d1f2f040dd4",
+            "name": "Every Monday 08:00"
+        },
+        {
+            "parameters": {
+                "url": "={{ $env.DOCOP_API_URL }}/api/internal/stats/weekly",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-internal-key",
+                            "value": "={{ $env.DOCOP_INTERNAL_KEY }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.5,
+            "position": [
+                220,
+                0
+            ],
+            "id": "3403802b-274e-456e-8826-1626e63efa89",
+            "name": "Get weekly stats",
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 5000
+        },
+        {
+            "parameters": {
+                "sendHTML": true,
+                "subject": "=DocOp weekly report – {{ $now.minus({ days: 7 }).toFormat('d LLL') }} to {{ $now.toFormat('d LLL yyyy') }}",
+                "htmlContent": "=<h3>Last 7 days</h3>\n<table cellpadding=\"6\">\n  <tr><td>Booked</td><td><b>{{ $json.booked }}</b></td></tr>\n  <tr><td>Paid</td><td>{{ $json.paid }}</td></tr>\n  <tr><td>Completed</td><td>{{ $json.completed }}</td></tr>\n  <tr><td>Cancelled</td><td>{{ $json.cancelled }}</td></tr>\n  <tr><td>Cancellation rate</td>\n      <td>{{ Math.round($json.cancelled / Math.max($json.booked, 1) * 100) }}%</td></tr>\n</table>",
+                "sender": "docopservice@docop.me",
+                "receipients": "suviniravisarani@gmail.com",
+                "additionalFields": {},
+                "requestOptions": {}
+            },
+            "type": "n8n-nodes-base.sendInBlue",
+            "typeVersion": 1,
+            "position": [
+                440,
+                0
+            ],
+            "id": "e3e2a1b7-11ee-49a0-90df-e0efa5288a9f",
+            "name": "Email weekly report",
+            "credentials": {
+                "sendInBlueApi": {
+                    "id": "G0T6kzjmpA40l2G5",
+                    "name": "Brevo account"
+                }
+            },
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 5000
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "Every Monday 08:00": {
+            "main": [
+                [
+                    {
+                        "node": "Get weekly stats",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get weekly stats": {
+            "main": [
+                [
+                    {
+                        "node": "Email weekly report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1",
+        "errorWorkflow": "es79rPnw4s2ZbNQr"
+    },
+    "tags": []
+}

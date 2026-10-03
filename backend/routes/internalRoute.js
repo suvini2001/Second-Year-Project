@@ -4,6 +4,7 @@ import authInternal from "../middleware/authInternal.js";
 import appointmentModel from "../models/appointmentModel.js";
 // use it to find appointments ,Update appointments and count appointments
 import { isValidSlotDate } from "../services/slotService.js";
+import processedEventModel from "../models/processedEventModel.js";
 
 const router = express.Router();  //Create a new empty group where I can define some API routes. 
 router.use(authInternal);  // every router that is inside this file must pass authInternal first 
@@ -55,4 +56,37 @@ router.get("/stats/weekly", async (req, res) => {
     ]);
     res.json({ success: true, booked, cancelled, completed, paid });
     // send the numbers back to n8n
-}); export default router;  //Make this router available to other files.
+});
+
+// Claim an event. firstTime=true only for the first caller,
+// or when a previous attempt failed (allowing a retry).
+router.post("/events/:eventId/claim", async (req, res) => {
+  const { eventId } = req.params;
+  const { eventType } = req.body;
+  try {
+    await processedEventModel.create({ eventId, eventType });
+    return res.json({ success: true, firstTime: true });
+  } catch (err) {
+    if (err.code !== 11000) throw err;   // 11000 = duplicate key: we've seen it
+    const retry = await processedEventModel.findOneAndUpdate(
+      { eventId, status: "failed" },
+      { $set: { status: "processing", lastError: null }, $inc: { attempts: 1 } }
+    );
+    return res.json({ success: true, firstTime: Boolean(retry) });
+  }
+});
+
+// Mark the result: { status: "completed" } or { status: "failed", error: "..." }
+router.post("/events/:eventId/result", async (req, res) => {
+  const { status, error } = req.body;
+  if (!["completed", "failed"].includes(status)) {
+    return res.status(400).json({ success: false, message: "Bad status" });
+  }
+  await processedEventModel.updateOne(
+    { eventId: req.params.eventId },
+    { $set: { status, lastError: error || null, processedAt: new Date() } }
+  );
+  res.json({ success: true });
+});
+
+export default router;  //Make this router available to other files.

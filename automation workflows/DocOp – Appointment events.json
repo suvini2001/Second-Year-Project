@@ -1,0 +1,772 @@
+{
+  "name": "DocOp – Appointment events",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "docop-events",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -176,
+        -576
+      ],
+      "id": "eb3f3e6b-1fa7-4c9f-8987-40fb82dadda2",
+      "name": "Receive DocOp event",
+      "webhookId": "148407d5-5758-4a05-878b-b7ecd895bfcc"
+    },
+    {
+      "parameters": {
+        "action": "hmac",
+        "value": "={{ $json.headers['x-docop-timestamp'] }}.{{ JSON.stringify($json.body) }}",
+        "dataPropertyName": "expected",
+        "type": "SHA256"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        48,
+        -576
+      ],
+      "id": "b6d58344-2fb3-4eb6-aab9-8bf0405d549e",
+      "name": "Compute signature",
+      "credentials": {
+        "crypto": {
+          "id": "UghF5IFQPY9wnJnW",
+          "name": "Crypto account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6499ca15-bca6-4662-9a4d-7e519df157d4",
+              "leftValue": "={{ $json.expected }}",
+              "rightValue": "={{ $json.headers['x-docop-signature'] }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "59fcf7b0-48c4-477c-9dfe-5ad16865fffd",
+              "leftValue": "={{ Date.now() - Number($json.headers['x-docop-timestamp']) }}",
+              "rightValue": 300000,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        272,
+        -576
+      ],
+      "id": "67fe9174-768a-405d-a408-72bcb950edd4",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        496,
+        -480
+      ],
+      "id": "adf4660f-d767-4f6c-bd57-34c8b7fddfe7",
+      "name": "Reject 401"
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        496,
+        -672
+      ],
+      "id": "14cf1e23-81d5-4052-8bdc-7bd5b8a9a19b",
+      "name": "Accept 202"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Receive DocOp event').item.json.body.type }}",
+                    "rightValue": "appointment.booked",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "d0ef7398-bad9-47f8-8d3a-34fc95b00eec"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "booked"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "440539fb-f47f-41b1-9e32-ba875d3935bf",
+                    "leftValue": "={{ $('Receive DocOp event').item.json.body.type }}",
+                    "rightValue": "appointment.paid",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "paid"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "d94fc526-26b7-48ba-a173-33dbb67eeb18",
+                    "leftValue": "={{ $('Receive DocOp event').item.json.body.type }}",
+                    "rightValue": "appointment.cancelled",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cancelled"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "6beb1a00-2675-4e00-975a-91b9c6106cb4",
+                    "leftValue": "={{ $('Receive DocOp event').item.json.body.type }}",
+                    "rightValue": "appointment.completed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "completed"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1440,
+        -720
+      ],
+      "id": "275140c9-d50d-4c7b-9aa2-d01d9c5c5a19",
+      "name": "Route by event type"
+    },
+    {
+      "parameters": {
+        "method": "=POST",
+        "url": "={{ $env.DOCOP_API_URL }}/api/internal/events/{{ $('Receive DocOp event').item.json.body.id }}/claim",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-key",
+              "value": "={{ $env.DOCOP_INTERNAL_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"eventType\": \"{{ $('Receive DocOp event').item.json.body.type }}\" }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        720,
+        -672
+      ],
+      "id": "57e4265c-9ac0-4ebf-a16b-66525792ffaf",
+      "name": "Claim event"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a07cfcaa-e05f-4b69-a2b3-cd599f9b8daa",
+              "leftValue": "={{ $json.firstTime }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        944,
+        -672
+      ],
+      "id": "7578d841-5856-4a31-9283-25487a7b2750",
+      "name": "New event?"
+    },
+    {
+      "parameters": {
+        "subject": "Appointment Booking Confirmation",
+        "textContent": "=Hello {{ $('Receive DocOp event').item.json.body.data.patientName }},  Your appointment has been successfully booked.  Doctor: {{ $('Receive DocOp event').item.json.body.data.doctorName }} Date: {{ $('Receive DocOp event').item.json.body.data.slotDate }} Time: {{ $('Receive DocOp event').item.json.body.data.slotTime }}  Thank you for using DocOp.",
+        "sender": "docopservice@docop.me",
+        "receipients": "={{ $('Receive DocOp event').item.json.body.data.patientEmail }}",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.sendInBlue",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        -1072
+      ],
+      "id": "183339e1-9d1d-4672-ba73-c79190174940",
+      "name": "Patient - Booking Confirmation",
+      "credentials": {
+        "sendInBlueApi": {
+          "id": "G0T6kzjmpA40l2G5",
+          "name": "Brevo account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "subject": "New appointment booked",
+        "textContent": "=Hello Dr. {{ $('Receive DocOp event').item.json.body.data.doctorName }},  You have received a new appointment booking.  Patient: {{ $('Receive DocOp event').item.json.body.data.patientName }} Date: {{ $('Receive DocOp event').item.json.body.data.slotDate }} Time: {{ $('Receive DocOp event').item.json.body.data.slotTime }}  Please log in to DocOp to view the appointment details.",
+        "sender": "docopservice@docop.me",
+        "receipients": "={{ $('Receive DocOp event').item.json.body.data.doctorEmail }}",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.sendInBlue",
+      "typeVersion": 1,
+      "position": [
+        2096,
+        -1072
+      ],
+      "id": "00b5a2ce-d128-4f5d-af5c-a7666ea8a399",
+      "name": "Doctor - New Booking Notification.",
+      "credentials": {
+        "sendInBlueApi": {
+          "id": "G0T6kzjmpA40l2G5",
+          "name": "Brevo account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCOP_API_URL }}/api/internal/events/{{ $('Receive DocOp event').item.json.body.id }}/result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-key",
+              "value": "={{ $env.DOCOP_INTERNAL_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "options": {},
+        "specifyBody": "json",
+        "jsonBody": "{ \"status\": \"completed\" }"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2320,
+        -1072
+      ],
+      "id": "7b02d5c5-cebd-4d9a-aed4-48858c31f7a5",
+      "name": "Mark completed - booked"
+    },
+    {
+      "parameters": {
+        "subject": "Payment received – DocOp",
+        "textContent": "=Hello {{ $('Receive DocOp event').item.json.body.data.patientName }}, we received your payment of {{ $('Receive DocOp event').item.json.body.data.amount }} for your appointment with {{ $('Receive DocOp event').item.json.body.data.doctorName }} on {{ $('Receive DocOp event').item.json.body.data.slotDate }} at {{ $('Receive DocOp event').item.json.body.data.slotTime }}. Thank you.",
+        "sender": "docopservice@docop.me",
+        "receipients": "={{ $('Receive DocOp event').item.json.body.data.patientEmail }}",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.sendInBlue",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        -800
+      ],
+      "id": "54cb3358-8a2e-4869-abe7-0882a868dd3b",
+      "name": "Patient - Payment Receipt",
+      "credentials": {
+        "sendInBlueApi": {
+          "id": "G0T6kzjmpA40l2G5",
+          "name": "Brevo account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "subject": "Patient payment received",
+        "textContent": "=Patient {{ $('Receive DocOp event').item.json.body.data.patientName }} has paid for the appointment on {{ $('Receive DocOp event').item.json.body.data.slotDate }} at {{ $('Receive DocOp event').item.json.body.data.slotTime }}.",
+        "sender": "docopservice@docop.me",
+        "receipients": "={{ $('Receive DocOp event').item.json.body.data.doctorEmail }}",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.sendInBlue",
+      "typeVersion": 1,
+      "position": [
+        2096,
+        -800
+      ],
+      "id": "fb10c21e-0350-49a3-9909-210e494bb51c",
+      "name": "Doctor - Patient Paid",
+      "credentials": {
+        "sendInBlueApi": {
+          "id": "G0T6kzjmpA40l2G5",
+          "name": "Brevo account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCOP_API_URL }}/api/internal/events/{{ $('Receive DocOp event').item.json.body.id }}/result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-key",
+              "value": "={{ $env.DOCOP_INTERNAL_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "options": {},
+        "specifyBody": "json",
+        "jsonBody": "{ \"status\": \"completed\" }"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2320,
+        -800
+      ],
+      "id": "139a5d3c-5e3c-453c-832d-52b382d89775",
+      "name": "Mark completed - paid"
+    },
+    {
+      "parameters": {
+        "subject": "Your DocOp appointment was cancelled",
+        "textContent": "=Hello {{ $('Receive DocOp event').item.json.body.data.patientName }}, your appointment with {{ $('Receive DocOp event').item.json.body.data.doctorName }} on {{ $('Receive DocOp event').item.json.body.data.slotDate }} at {{ $('Receive DocOp event').item.json.body.data.slotTime }} was cancelled by the {{ $('Receive DocOp event').item.json.body.data.cancelledBy }}. You can book a new time in the app.",
+        "sender": "docopservice@docop.me",
+        "receipients": "={{ $('Receive DocOp event').item.json.body.data.patientEmail }}",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.sendInBlue",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        -560
+      ],
+      "id": "15a751a2-9820-45b7-b653-483c38705d3b",
+      "name": "Patient - Appointment Cancelled",
+      "credentials": {
+        "sendInBlueApi": {
+          "id": "G0T6kzjmpA40l2G5",
+          "name": "Brevo account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "subject": "Appointment cancelled",
+        "textContent": "=The appointment with {{ $('Receive DocOp event').item.json.body.data.patientName }} on {{ $('Receive DocOp event').item.json.body.data.slotDate }} at {{ $('Receive DocOp event').item.json.body.data.slotTime }} was cancelled by the {{ $('Receive DocOp event').item.json.body.data.cancelledBy }}. The slot is free again.",
+        "sender": "docopservice@docop.me",
+        "receipients": "={{ $('Receive DocOp event').item.json.body.data.doctorEmail }}",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.sendInBlue",
+      "typeVersion": 1,
+      "position": [
+        2096,
+        -560
+      ],
+      "id": "298c033d-8dc1-4af4-a777-370da1744855",
+      "name": "Doctor - Appointment Cancelled",
+      "credentials": {
+        "sendInBlueApi": {
+          "id": "G0T6kzjmpA40l2G5",
+          "name": "Brevo account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCOP_API_URL }}/api/internal/events/{{ $('Receive DocOp event').item.json.body.id }}/result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-key",
+              "value": "={{ $env.DOCOP_INTERNAL_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "options": {},
+        "specifyBody": "json",
+        "jsonBody": "{ \"status\": \"completed\" }"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2320,
+        -560
+      ],
+      "id": "adcf5a46-ecfa-4d3d-8e37-9cae0836a34e",
+      "name": "Mark completed - cancelled"
+    },
+    {
+      "parameters": {
+        "subject": "Thank you for visiting – DocOp",
+        "textContent": "=Hello {{ $('Receive DocOp event').item.json.body.data.patientName }}, thank you for your appointment with {{ $('Receive DocOp event').item.json.body.data.doctorName }} today. We hope it went well. Please let us know how we did by replying to this email.",
+        "sender": "docopservice@docop.me",
+        "receipients": "={{ $('Receive DocOp event').item.json.body.data.patientEmail }}",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.sendInBlue",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        -320
+      ],
+      "id": "e9a138bb-82c6-4754-add5-4c7f5a7481f3",
+      "name": "Patient - Thank You",
+      "credentials": {
+        "sendInBlueApi": {
+          "id": "G0T6kzjmpA40l2G5",
+          "name": "Brevo account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCOP_API_URL }}/api/internal/events/{{ $('Receive DocOp event').item.json.body.id }}/result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-key",
+              "value": "={{ $env.DOCOP_INTERNAL_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "options": {},
+        "specifyBody": "json",
+        "jsonBody": "{ \"status\": \"completed\" }"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2096,
+        -320
+      ],
+      "id": "732168e4-af32-43c2-ae1b-dc53fab6217c",
+      "name": "Mark completed - completed"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Receive DocOp event": {
+      "main": [
+        [
+          {
+            "node": "Compute signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute signature": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Accept 202",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accept 202": {
+      "main": [
+        [
+          {
+            "node": "Claim event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim event": {
+      "main": [
+        [
+          {
+            "node": "New event?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New event?": {
+      "main": [
+        [
+          {
+            "node": "Route by event type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by event type": {
+      "main": [
+        [
+          {
+            "node": "Patient - Booking Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Patient - Payment Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Patient - Appointment Cancelled",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Patient - Thank You",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Patient - Booking Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Doctor - New Booking Notification.",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doctor - New Booking Notification.": {
+      "main": [
+        [
+          {
+            "node": "Mark completed - booked",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Patient - Payment Receipt": {
+      "main": [
+        [
+          {
+            "node": "Doctor - Patient Paid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doctor - Patient Paid": {
+      "main": [
+        [
+          {
+            "node": "Mark completed - paid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Patient - Appointment Cancelled": {
+      "main": [
+        [
+          {
+            "node": "Doctor - Appointment Cancelled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Doctor - Appointment Cancelled": {
+      "main": [
+        [
+          {
+            "node": "Mark completed - cancelled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Patient - Thank You": {
+      "main": [
+        [
+          {
+            "node": "Mark completed - completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "es79rPnw4s2ZbNQr",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5a5b8ac8389feddc977e5c16a7913b4b6f5e535dd242b33601799202229fac62"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

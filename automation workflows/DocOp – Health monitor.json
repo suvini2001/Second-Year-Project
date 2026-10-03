@@ -1,0 +1,247 @@
+{
+  "name": "DocOp – Health monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "={{ $env.DOCOP_API_URL }}/api/health",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": "={{ true }}",
+              "neverError": true
+            }
+          },
+          "timeout": 5000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        -32
+      ],
+      "id": "572e18ce-1091-459c-b3df-5f664ca50ecc",
+      "name": "HTTP Request",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -32,
+        -32
+      ],
+      "id": "14600566-555f-42b0-b85e-5a29b4e6035d",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ac919e42-9add-434d-82e5-ecf99c158d86",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "9f56b6f5-89dc-489b-ad57-ad51197e1450",
+              "leftValue": "={{ $json.body.status }}",
+              "rightValue": "ok",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        544,
+        -192
+      ],
+      "id": "7c424296-595d-4d91-8afa-290b8d5180ed",
+      "name": "Is unhealthy?"
+    },
+    {
+      "parameters": {
+        "sendHTML": true,
+        "subject": "=DocOp API is unhealthy",
+        "htmlContent": "=<p>Status code: {{ $('HTTP Request').item.json.body.status }}</p>\n<p>Database:{{ $('HTTP Request').item.json.body.db }} </p>\n<p>Time:{{ $('Schedule Trigger').item.json['Readable time'] }} </p>\n<p> Date:<{{ $('Schedule Trigger').item.json['Readable date'] }}/p>",
+        "sender": "docopservice@docop.me",
+        "receipients": "suviniravisarani@gmail.com",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.sendInBlue",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        -320
+      ],
+      "id": "3becc67d-e765-4c16-95ee-48f1701ee8b0",
+      "name": "Email – degraded",
+      "credentials": {
+        "sendInBlueApi": {
+          "id": "G0T6kzjmpA40l2G5",
+          "name": "Brevo account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendHTML": true,
+        "subject": "=DocOp API is Down",
+        "htmlContent": "=<p>Error: {{ $json.error.message }}</p>\n<p> Date:{{ $json['Readable date'] }}</p>",
+        "sender": "docopservice@docop.me",
+        "receipients": "suviniravisarani@gmail.com",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.sendInBlue",
+      "typeVersion": 1,
+      "position": [
+        864,
+        112
+      ],
+      "id": "3a0c5406-1bec-4e28-bca6-30d5912399d2",
+      "name": "Email – unreachable",
+      "credentials": {
+        "sendInBlueApi": {
+          "id": "G0T6kzjmpA40l2G5",
+          "name": "Brevo account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = $getWorkflowStaticData('global');\n\nif (s.down) return [];\n\ns.down = true;\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        112
+      ],
+      "id": "103d79c3-7f39-4fd3-9e21-2e90f19570f2",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = $getWorkflowStaticData('global');\n\nif (s.down) return [];\n\ns.down = true;\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        -208
+      ],
+      "id": "5ce73a44-0be7-42f7-809c-cb6304b6df8d",
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Is unhealthy?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is unhealthy?": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Email – unreachable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Email – degraded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "es79rPnw4s2ZbNQr",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "73b07138-1bb6-4311-abc5-a613c95e1d29",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5a5b8ac8389feddc977e5c16a7913b4b6f5e535dd242b33601799202229fac62"
+  },
+  "nodeGroups": [],
+  "id": "6TTVdATBe6CQQ0wn",
+  "tags": []
+}
