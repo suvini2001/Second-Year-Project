@@ -41,5 +41,7 @@ export function emitEvent(type, data) {
             headers: { "Content-Type": "application/json", "x-docop-timestamp": ts, "x-docop-signature": signature },
             body,
             signal: AbortSignal.timeout(3000),
-        }).catch((err) => console.error(`[event] ${type} not delivered:`, err.message));
+        })
+        .then((res) => { if (!res.ok) console.error(`[event] ${type} rejected by n8n: HTTP ${res.status}`); })
+        .catch((err) => console.error(`[event] ${type} not delivered:`, err.message));
 }

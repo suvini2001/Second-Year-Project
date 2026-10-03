@@ -328,63 +328,7 @@ const verifyMockPayment = async (req, res) => {
       return res.json({ success: false, message: "Appointment not found or cannot be paid" });
     }
 
-    if (appointment) {
-      // Send payment confirmation emails (fire-and-forget)
-      try {
-        const doctor = await doctorModel.findById(appointment.docId);
-        const userEmail = appointment?.userData?.email; // embedded snapshot
-        const doctorEmail = appointment?.docData?.email || doctor?.email;
-        const apptDate = appointment.slotDate;
-        const apptTime = appointment.slotTime;
-        const amount = appointment.amount;
 
-        // Create email subject
-        const subject = `Payment Confirmed - ${apptDate} ${apptTime}`;
-
-        // HTML template for user confirmation email
-        const userHtml = `<!DOCTYPE html><html><body style="font-family:Arial;line-height:1.5;color:#222">
-                  <h2 style="color:#0a7cff;margin:0 0 12px">Payment Successful</h2>
-                  <p>Your appointment is confirmed.</p>
-                  <p><strong>Appointment Date and Time:</strong> ${apptDate} ${apptTime}<br/>
-                  <strong>Amount Paid:</strong> $${amount}</p>
-                  <p>Doctor: ${appointment?.docData?.name || 'Doctor'}</p>
-                  <p style="margin-top:20px">Thank you,<br/>DocOp Team</p>
-                </body></html>`;
-
-        // HTML template for doctor notification email
-        const doctorHtml = `<!DOCTYPE html><html><body style="font-family:Arial;line-height:1.5;color:#222">
-                  <h2 style="color:#0a7cff;margin:0 0 12px">New Paid Appointment</h2>
-                  <p>An appointment has been paid and confirmed.</p>
-                  <p><strong>Appointment Date and Time:</strong> ${apptDate} ${apptTime}<br/>
-                  <strong>Patient:</strong> ${appointment?.userData?.name || 'Patient'}<br/>
-                  <strong>Amount:</strong> $${amount}</p>
-                  <p style="margin-top:20px">DocOp Notification</p>
-                </body></html>`;
-
-        // Array to collect email promises
-        const sends = [];
-
-        // Add user email to send queue if email exists
-        if (userEmail) {
-          sends.push(sendEmail({ to: userEmail, subject, html: userHtml }));
-        }
-
-        // Add doctor email to send queue if email exists
-        if (doctorEmail) {
-          sends.push(sendEmail({ to: doctorEmail, subject: `Patient Paid - ${apptDate} ${apptTime}`, html: doctorHtml }));
-        }
-
-        // Run concurrently without blocking response; ignore individual failures
-        Promise.allSettled(sends).then(r => {
-          const failed = r.filter(x => x.status === 'rejected');
-          if (failed.length) {
-            console.error('Email send failures (payment confirmation):', failed.map(f => f.reason?.message || f.reason));
-          }
-        });
-      } catch (emailErr) {
-        console.error('Payment confirmation email error:', emailErr?.message || emailErr);
-      }
-    }
 
     emitEvent("appointment.paid", {
       appointmentId,

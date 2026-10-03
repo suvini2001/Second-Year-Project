@@ -12,6 +12,7 @@ import http from "http";
 import jwt from "jsonwebtoken";
 import messageModel from "./models/messageModel.js";
 import appointmentModel from "./models/appointmentModel.js";
+import processedEventModel from "./models/processedEventModel.js";
 import mongoose from "mongoose";
 
 // dotenv already loaded above via ESM import
@@ -409,6 +410,7 @@ mongoose.connection.once("open", async () => {
   console.log("MongoDB connected. Syncing indexes...");
   // Ensure schema-defined indexes exist and obsolete ones are dropped
   await messageModel.createIndexes();
+  await processedEventModel.createIndexes();
   console.log("Message indexes synced!");
 });
 
