@@ -258,7 +258,10 @@
         848
       ],
       "id": "a112fb7e-f135-44e0-8773-cb952e41afd9",
-      "name": "Claim event"
+      "name": "Claim event",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -371,7 +374,10 @@
         448
       ],
       "id": "72e7132b-7b2a-4f92-8505-b43017a090a5",
-      "name": "Mark completed - booked"
+      "name": "Mark completed - booked",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -450,7 +456,10 @@
         720
       ],
       "id": "25b9ad4c-d79c-43e1-bfea-1da6e758ca8a",
-      "name": "Mark completed - paid"
+      "name": "Mark completed - paid",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -529,7 +538,10 @@
         960
       ],
       "id": "bce266cd-a8cf-40df-bb49-01454233150c",
-      "name": "Mark completed - cancelled"
+      "name": "Mark completed - cancelled",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -582,7 +594,10 @@
         1200
       ],
       "id": "2e26e833-6dc4-4e79-ba24-1d45d94f9838",
-      "name": "Mark completed - completed"
+      "name": "Mark completed - completed",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     }
   ],
   "pinData": {},
