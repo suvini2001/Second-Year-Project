@@ -22,6 +22,8 @@
       ],
       "id": "572e18ce-1091-459c-b3df-5f664ca50ecc",
       "name": "HTTP Request",
+      "retryOnFail": true,
+      "waitBetweenTries": 5,
       "onError": "continueErrorOutput"
     },
     {
@@ -103,6 +105,8 @@
       ],
       "id": "3becc67d-e765-4c16-95ee-48f1701ee8b0",
       "name": "Email – degraded",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
       "credentials": {
         "sendInBlueApi": {
           "id": "G0T6kzjmpA40l2G5",
@@ -128,6 +132,8 @@
       ],
       "id": "3a0c5406-1bec-4e28-bca6-30d5912399d2",
       "name": "Email – unreachable",
+      "retryOnFail": true,
+      "waitBetweenTries": 5,
       "credentials": {
         "sendInBlueApi": {
           "id": "G0T6kzjmpA40l2G5",
@@ -256,7 +262,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "ab49726c-fe89-4db8-9d70-409649cb1d1b",
+  "versionId": "26de1913-aa39-41a1-af6f-f8cb215bfa0e",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5a5b8ac8389feddc977e5c16a7913b4b6f5e535dd242b33601799202229fac62"

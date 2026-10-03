@@ -1,0 +1,236 @@
+{
+  "name": "DocOp – Reminders",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 18
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1104,
+        80
+      ],
+      "id": "33d954db-67dc-41b1-a0b8-4d62ceaf9cbb",
+      "name": "Every day 18:00"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.DOCOP_API_URL }}/api/internal/appointments/due-reminders",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "date",
+              "value": "={{ $now.plus({ days: 1 }).toFormat('d_M_yyyy') }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-key",
+              "value": "={{ $env.DOCOP_INTERNAL_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -880,
+        80
+      ],
+      "id": "3ed6ee2d-880d-422c-9bf9-7efa78ef950c",
+      "name": "Get tomorrow's appointments",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "appointments",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        80
+      ],
+      "id": "a8a594df-6987-4e20-84ca-edf4fb6ec348",
+      "name": "Split appointments"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DOCOP_API_URL }}/api/internal/appointments/{{ $json.id }}/reminder-sent",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-key",
+              "value": "={{ $env.DOCOP_INTERNAL_KEY }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -448,
+        80
+      ],
+      "id": "33030204-41d0-4d03-ae04-de0e34244345",
+      "name": "Mark reminder sent",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5da941f5-e982-4728-9786-2ff3171acfe9",
+              "leftValue": "={{ $json.firstTime }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -224,
+        80
+      ],
+      "id": "2bc5154f-7046-41ef-a705-a7476045b841",
+      "name": "First time?"
+    },
+    {
+      "parameters": {
+        "sendHTML": true,
+        "subject": "Reminder: your DocOp appointment tomorrow",
+        "htmlContent": "=<p>Hi {{ $('Split appointments').item.json.patientName }},</p>\n<p>This is a reminder of your appointment with\nDr. {{ $('Split appointments').item.json.doctorName }}\ntomorrow at {{ $('Split appointments').item.json.slotTime }}.</p>\n<p>If you can't attend, please cancel in the app so someone else can book.</p>",
+        "sender": "docopservice@docop.me",
+        "receipients": "={{ $('Split appointments').item.json.patientEmail }}",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.sendInBlue",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f3ddacb6-3392-4784-a1db-de4db43e34e5",
+      "name": "Email reminder",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "sendInBlueApi": {
+          "id": "G0T6kzjmpA40l2G5",
+          "name": "Brevo account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every day 18:00": {
+      "main": [
+        [
+          {
+            "node": "Get tomorrow's appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get tomorrow's appointments": {
+      "main": [
+        [
+          {
+            "node": "Split appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split appointments": {
+      "main": [
+        [
+          {
+            "node": "Mark reminder sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark reminder sent": {
+      "main": [
+        [
+          {
+            "node": "First time?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "First time?": {
+      "main": [
+        [
+          {
+            "node": "Email reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "es79rPnw4s2ZbNQr",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "9e03b9ff-d14e-4e23-851d-51e19a55c8a2",
+  "meta": {
+    "instanceId": "5a5b8ac8389feddc977e5c16a7913b4b6f5e535dd242b33601799202229fac62"
+  },
+  "nodeGroups": [],
+  "id": "6FgVIZTwV9iqeYHs",
+  "tags": []
+}

@@ -30,6 +30,8 @@
       ],
       "id": "f224443a-f792-4c41-9a85-9072731f3dda",
       "name": "Email me the failure",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
       "credentials": {
         "sendInBlueApi": {
           "id": "G0T6kzjmpA40l2G5",
@@ -57,7 +59,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "b77ec119-24bc-4d35-85f4-030854c2b236",
+  "versionId": "5635dee0-27c0-44b5-88b3-ac49d49d62a2",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5a5b8ac8389feddc977e5c16a7913b4b6f5e535dd242b33601799202229fac62"

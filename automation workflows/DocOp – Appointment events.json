@@ -11,10 +11,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -176,
-        -576
+        -1792,
+        944
       ],
-      "id": "eb3f3e6b-1fa7-4c9f-8987-40fb82dadda2",
+      "id": "f4fd828e-219c-4302-adb6-688f2eead3dd",
       "name": "Receive DocOp event",
       "webhookId": "148407d5-5758-4a05-878b-b7ecd895bfcc"
     },
@@ -22,17 +22,18 @@
       "parameters": {
         "action": "hmac",
         "value": "={{ $json.headers['x-docop-timestamp'] }}.{{ JSON.stringify($json.body) }}",
-        "dataPropertyName": "expected",
-        "type": "SHA256"
+        "dataPropertyName": "expected"
       },
       "type": "n8n-nodes-base.crypto",
       "typeVersion": 2,
       "position": [
-        48,
-        -576
+        -1568,
+        944
       ],
-      "id": "b6d58344-2fb3-4eb6-aab9-8bf0405d549e",
+      "id": "1bfc1bdd-6794-4f19-84e7-4930b28a4b19",
       "name": "Compute signature",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
       "credentials": {
         "crypto": {
           "id": "UghF5IFQPY9wnJnW",
@@ -77,10 +78,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        272,
-        -576
+        -1344,
+        944
       ],
-      "id": "67fe9174-768a-405d-a408-72bcb950edd4",
+      "id": "e8bea783-90d6-4cb3-bb25-75d0d13cf4d6",
       "name": "If"
     },
     {
@@ -93,10 +94,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        496,
-        -480
+        -1120,
+        1040
       ],
-      "id": "adf4660f-d767-4f6c-bd57-34c8b7fddfe7",
+      "id": "4ecae215-c92a-4645-bb38-a2250ce53658",
       "name": "Reject 401"
     },
     {
@@ -109,10 +110,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        496,
-        -672
+        -1120,
+        848
       ],
-      "id": "14cf1e23-81d5-4052-8bdc-7bd5b8a9a19b",
+      "id": "b02c95eb-c635-455e-9969-2705aa9a47b2",
       "name": "Accept 202"
     },
     {
@@ -226,10 +227,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [
-        1440,
-        -720
+        -176,
+        800
       ],
-      "id": "275140c9-d50d-4c7b-9aa2-d01d9c5c5a19",
+      "id": "c0e9f360-cfd9-4848-a82b-2b4e8497706a",
       "name": "Route by event type"
     },
     {
@@ -253,10 +254,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        720,
-        -672
+        -896,
+        848
       ],
-      "id": "57e4265c-9ac0-4ebf-a16b-66525792ffaf",
+      "id": "a112fb7e-f135-44e0-8773-cb952e41afd9",
       "name": "Claim event"
     },
     {
@@ -287,10 +288,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        944,
-        -672
+        -672,
+        848
       ],
-      "id": "7578d841-5856-4a31-9283-25487a7b2750",
+      "id": "d2ab851a-54be-403a-87a7-0cfd8d0f9ff2",
       "name": "New event?"
     },
     {
@@ -305,11 +306,13 @@
       "type": "n8n-nodes-base.sendInBlue",
       "typeVersion": 1,
       "position": [
-        1792,
-        -1072
+        176,
+        448
       ],
-      "id": "183339e1-9d1d-4672-ba73-c79190174940",
+      "id": "f3821917-7e81-4f96-9b57-7ac8bb70694f",
       "name": "Patient - Booking Confirmation",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
       "credentials": {
         "sendInBlueApi": {
           "id": "G0T6kzjmpA40l2G5",
@@ -329,11 +332,13 @@
       "type": "n8n-nodes-base.sendInBlue",
       "typeVersion": 1,
       "position": [
-        2096,
-        -1072
+        480,
+        448
       ],
-      "id": "00b5a2ce-d128-4f5d-af5c-a7666ea8a399",
+      "id": "cae254a0-d678-4ef2-b6a6-24501a63e635",
       "name": "Doctor - New Booking Notification.",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
       "credentials": {
         "sendInBlueApi": {
           "id": "G0T6kzjmpA40l2G5",
@@ -355,17 +360,17 @@
           ]
         },
         "sendBody": true,
-        "options": {},
         "specifyBody": "json",
-        "jsonBody": "{ \"status\": \"completed\" }"
+        "jsonBody": "{ \"status\": \"completed\" }",
+        "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2320,
-        -1072
+        704,
+        448
       ],
-      "id": "7b02d5c5-cebd-4d9a-aed4-48858c31f7a5",
+      "id": "72e7132b-7b2a-4f92-8505-b43017a090a5",
       "name": "Mark completed - booked"
     },
     {
@@ -380,11 +385,13 @@
       "type": "n8n-nodes-base.sendInBlue",
       "typeVersion": 1,
       "position": [
-        1792,
-        -800
+        176,
+        720
       ],
-      "id": "54cb3358-8a2e-4869-abe7-0882a868dd3b",
+      "id": "2070450f-4a51-4f94-addb-c824459a9a3b",
       "name": "Patient - Payment Receipt",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
       "credentials": {
         "sendInBlueApi": {
           "id": "G0T6kzjmpA40l2G5",
@@ -404,11 +411,13 @@
       "type": "n8n-nodes-base.sendInBlue",
       "typeVersion": 1,
       "position": [
-        2096,
-        -800
+        480,
+        720
       ],
-      "id": "fb10c21e-0350-49a3-9909-210e494bb51c",
+      "id": "890882f4-43af-4712-8b89-48f494320359",
       "name": "Doctor - Patient Paid",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
       "credentials": {
         "sendInBlueApi": {
           "id": "G0T6kzjmpA40l2G5",
@@ -430,17 +439,17 @@
           ]
         },
         "sendBody": true,
-        "options": {},
         "specifyBody": "json",
-        "jsonBody": "{ \"status\": \"completed\" }"
+        "jsonBody": "{ \"status\": \"completed\" }",
+        "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2320,
-        -800
+        704,
+        720
       ],
-      "id": "139a5d3c-5e3c-453c-832d-52b382d89775",
+      "id": "25b9ad4c-d79c-43e1-bfea-1da6e758ca8a",
       "name": "Mark completed - paid"
     },
     {
@@ -455,11 +464,13 @@
       "type": "n8n-nodes-base.sendInBlue",
       "typeVersion": 1,
       "position": [
-        1792,
-        -560
+        176,
+        960
       ],
-      "id": "15a751a2-9820-45b7-b653-483c38705d3b",
+      "id": "fea44362-7fb8-44eb-aeb3-4a146c62d065",
       "name": "Patient - Appointment Cancelled",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
       "credentials": {
         "sendInBlueApi": {
           "id": "G0T6kzjmpA40l2G5",
@@ -479,11 +490,13 @@
       "type": "n8n-nodes-base.sendInBlue",
       "typeVersion": 1,
       "position": [
-        2096,
-        -560
+        480,
+        960
       ],
-      "id": "298c033d-8dc1-4af4-a777-370da1744855",
+      "id": "8a9d14b7-dc1a-4da7-85b7-7dcfd6ea4c5b",
       "name": "Doctor - Appointment Cancelled",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
       "credentials": {
         "sendInBlueApi": {
           "id": "G0T6kzjmpA40l2G5",
@@ -505,17 +518,17 @@
           ]
         },
         "sendBody": true,
-        "options": {},
         "specifyBody": "json",
-        "jsonBody": "{ \"status\": \"completed\" }"
+        "jsonBody": "{ \"status\": \"completed\" }",
+        "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2320,
-        -560
+        704,
+        960
       ],
-      "id": "adcf5a46-ecfa-4d3d-8e37-9cae0836a34e",
+      "id": "bce266cd-a8cf-40df-bb49-01454233150c",
       "name": "Mark completed - cancelled"
     },
     {
@@ -530,11 +543,13 @@
       "type": "n8n-nodes-base.sendInBlue",
       "typeVersion": 1,
       "position": [
-        1792,
-        -320
+        176,
+        1200
       ],
-      "id": "e9a138bb-82c6-4754-add5-4c7f5a7481f3",
+      "id": "84105ea2-2d5a-4f90-b5cd-b2ef4f1cbb43",
       "name": "Patient - Thank You",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
       "credentials": {
         "sendInBlueApi": {
           "id": "G0T6kzjmpA40l2G5",
@@ -556,17 +571,17 @@
           ]
         },
         "sendBody": true,
-        "options": {},
         "specifyBody": "json",
-        "jsonBody": "{ \"status\": \"completed\" }"
+        "jsonBody": "{ \"status\": \"completed\" }",
+        "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        2096,
-        -320
+        480,
+        1200
       ],
-      "id": "732168e4-af32-43c2-ae1b-dc53fab6217c",
+      "id": "2e26e833-6dc4-4e79-ba24-1d45d94f9838",
       "name": "Mark completed - completed"
     }
   ],
@@ -755,6 +770,7 @@
       ]
     }
   },
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
@@ -763,10 +779,11 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
+  "versionId": "c6ba0c6b-ebba-4fe3-a401-c2170d263775",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "5a5b8ac8389feddc977e5c16a7913b4b6f5e535dd242b33601799202229fac62"
   },
   "nodeGroups": [],
+  "id": "HXyk7UASmly4tq2k",
   "tags": []
 }
