@@ -89,7 +89,7 @@
       "parameters": {
         "sendHTML": true,
         "subject": "=DocOp API is unhealthy",
-        "htmlContent": "=<p>Status code: {{ $('HTTP Request').item.json.body.status }}</p>\n<p>Database:{{ $('HTTP Request').item.json.body.db }} </p>\n<p>Time:{{ $('Schedule Trigger').item.json['Readable time'] }} </p>\n<p> Date:<{{ $('Schedule Trigger').item.json['Readable date'] }}/p>",
+        "htmlContent": "=<p>Status code: {{ $('HTTP Request').item.json.statusCode }}</p>\n<p>Database: {{ $('HTTP Request').item.json.body.db }}</p>\n<p>Time: {{ $('Schedule Trigger').item.json['Readable time'] }}</p>\n<p>Date: {{ $('Schedule Trigger').item.json['Readable date'] }}</p>",
         "sender": "docopservice@docop.me",
         "receipients": "suviniravisarani@gmail.com",
         "additionalFields": {},
@@ -114,7 +114,7 @@
       "parameters": {
         "sendHTML": true,
         "subject": "=DocOp API is Down",
-        "htmlContent": "=<p>Error: {{ $json.error.message }}</p>\n<p> Date:{{ $json['Readable date'] }}</p>",
+        "htmlContent": "=<p>Error: {{ $json.error.message }}</p> <p>Time: {{ $('Schedule Trigger').item.json['Readable time'] }}</p> <p>Date: {{ $('Schedule Trigger').item.json['Readable date'] }}</p>",
         "sender": "docopservice@docop.me",
         "receipients": "suviniravisarani@gmail.com",
         "additionalFields": {},
@@ -123,8 +123,8 @@
       "type": "n8n-nodes-base.sendInBlue",
       "typeVersion": 1,
       "position": [
-        864,
-        112
+        848,
+        208
       ],
       "id": "3a0c5406-1bec-4e28-bca6-30d5912399d2",
       "name": "Email – unreachable",
@@ -160,6 +160,19 @@
       ],
       "id": "5ce73a44-0be7-42f7-809c-cb6304b6df8d",
       "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "  const s = $getWorkflowStaticData('global');\n  s.down = false;\n  return [];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        0
+      ],
+      "id": "5bc6a8dc-b174-467f-a3ec-c57c81d0d3ea",
+      "name": "Code in JavaScript2"
     }
   ],
   "pinData": {},
@@ -201,6 +214,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -236,7 +256,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "73b07138-1bb6-4311-abc5-a613c95e1d29",
+  "versionId": "ab49726c-fe89-4db8-9d70-409649cb1d1b",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5a5b8ac8389feddc977e5c16a7913b4b6f5e535dd242b33601799202229fac62"
