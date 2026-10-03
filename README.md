@@ -292,6 +292,8 @@ curl -X POST "http://localhost:8000/api/user/test-email" ^
 
 ## Run with Docker
 
+See [AUTOMATION.md](./AUTOMATION.md) for the n8n automation setup.
+
 1. Copy `.env.example` to `.env` (root) and fill in the values.
 2. Create `backend/.env` from `backend/.env.example`.
 3. Start everything:
