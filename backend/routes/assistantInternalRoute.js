@@ -3,8 +3,8 @@ import mongoose from 'mongoose';
 import doctorModel from '../models/doctorModel.js';
 import appointmentModel from '../models/appointmentModel.js';
 import pendingBookingModel from '../models/pendingBookingModel.js';
-import { isValidSlotDate, isValidSlotTime } from '../services/slotService.js';
-import { allSlotsFor } from '../services/slotTimes.js';
+import { isValidSlotTime } from '../services/slotService.js';
+import { allSlotsFor, toSlotDate } from '../services/slotTimes.js';
 import authInternal from "../middleware/authInternal.js";
 
 const router = express.Router();
@@ -37,17 +37,18 @@ router.get("/doctors", async (req, res) => {
 // Tool 2: check_availability
 // Given a doctor and date, tell the AI which appointment times are free.
 router.get("/availability", async (req, res) => {
-    const { doctorId, date } = req.query;
+    const { doctorId } = req.query;
 
-    // validate the inputs docID and the date so the bad input is rejected before quering the database
-    if (!mongoose.isValidObjectId(doctorId) || !isValidSlotDate(date))
-        return res.status(400).json({ error: "doctorId or date (D_M_YYYY) invalid" });
+    if (!mongoose.isValidObjectId(doctorId)) return res.json({ error: "Unknown doctorId. Use one from search_doctors." });
+    
+    const { slotDate, error } = toSlotDate(req.query.date);
+    if (error) return res.json({ error });
 
     //get doc information -- only selecting what is necessary
     const doc = await doctorModel.findById(doctorId).select("name availability slots_booked").lean();
     if (!doc || !doc.availability) return res.json({ available: false, freeSlots: [] });
-    const booked = doc.slots_booked?.[date] || [];
-    res.json({ doctorName: doc.name, date, freeSlots: allSlotsFor(date).filter((t) => !booked.includes(t)) });
+    const booked = doc.slots_booked?.[slotDate] || [];
+    res.json({ doctorName: doc.name, date: req.query.date, freeSlots: allSlotsFor(slotDate).filter((t) => !booked.includes(t)) });
 });  // Remove already-booked slots
 
 // Tool 3: get_my_appointments (userId comes from n8n's signed request, not the model)
@@ -69,35 +70,34 @@ router.get("/users/:userId/appointments", async (req, res) => {
 
 // Tool 4: request_booking -> creates a PENDING booking only
 router.post("/bookings/request", async (req, res) => {
-    const { userId, doctorId, date, time } = req.body;
-    // validate everything
-    if (!mongoose.isValidObjectId(userId) || !mongoose.isValidObjectId(doctorId) ||
-        !isValidSlotDate(date) || !isValidSlotTime(time))
-        return res.status(400).json({ error: "invalid input" });
+    const { userId, doctorId, time } = req.body;
 
-    // get the doctor
+    // userId comes from n8n's signed request: if it's wrong, that's our bug, not the AI's
+    if (!mongoose.isValidObjectId(userId)) return res.status(400).json({ error: "invalid user" });
+
+    // these come from the AI: answer with a readable reason so it can correct itself
+    if (!mongoose.isValidObjectId(doctorId))
+        return res.json({ ok: false, reason: "Unknown doctorId. Use one returned by search_doctors." });
+    const { slotDate, error } = toSlotDate(req.body.date);
+    if (error) return res.json({ ok: false, reason: error });
+    if (!isValidSlotTime(time))
+        return res.json({ ok: false, reason: "Use a time exactly as returned by check_availability, e.g. 10:00 AM." });
+
     const doc = await doctorModel.findById(doctorId).select("name fees availability slots_booked").lean();
-
-    // check whether the requested slot is free
-    const free = doc?.availability && allSlotsFor(date).includes(time) &&
-        !(doc.slots_booked?.[date] || []).includes(time);
-
-    // if the slot is not free This is useful because another patient might have booked the slot after the AI originally checked it.
+    const free = doc?.availability && allSlotsFor(slotDate).includes(time) &&
+        !(doc.slots_booked?.[slotDate] || []).includes(time);
     if (!free) return res.json({ ok: false, reason: "That slot isn't available. Check availability again." });
 
-    // cancel any previous pending booking -- only one pending booking at a time 
-    await pendingBookingModel.updateMany({ userId, status: "pending" }, { status: "cancelled" }); // one at a time
-
-    //Create the temporary booking
+    await pendingBookingModel.updateMany({ userId, status: "pending" }, { status: "cancelled" });
     const p = await pendingBookingModel.create({
         userId, docId: doctorId, doctorName: doc.name,
-        slotDate: date, slotTime: time, fee: doc.fees, expiresAt: new Date(Date.now() + 10 * 60 * 1000)
+        slotDate, slotTime: time, fee: doc.fees,          // stored as 9_10_2026, like the website
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
     });
 
-    // return the pending booking information 
     res.json({
-        ok: true, pendingId: p._id, doctorName: doc.name, date, time, fee: doc.fees,
-        note: "NOT booked yet. The patient must press Confirm in the chat within 10 minutes."
+        ok: true, pendingId: p._id, doctorName: doc.name, date: req.body.date, time, fee: doc.fees,
+        note: "NOT booked yet. The patient must press Confirm in the chat within 10 minutes.",
     });
 });
 
