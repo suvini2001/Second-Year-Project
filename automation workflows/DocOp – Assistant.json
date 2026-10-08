@@ -265,8 +265,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        944,
-        240
+        1008,
+        16
       ],
       "id": "7c105427-d16d-4481-baa3-fbe8e955304a",
       "name": "Send reply"
@@ -332,6 +332,21 @@
           "name": "Google Gemini(PaLM) Api account"
         }
       }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "   {{ JSON.stringify({ reply: \"Sorry, I'm getting a lot of requests right now. Please try again in a minute, or book directly from the Doctors page.\" }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        848,
+        192
+      ],
+      "id": "5bc9d57d-bc4e-46b5-91f6-cb2bc8427445",
+      "name": "Send busy reply"
     }
   ],
   "pinData": {},
@@ -381,6 +396,13 @@
         [
           {
             "node": "Send reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send busy reply",
             "type": "main",
             "index": 0
           }
@@ -474,7 +496,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "5ec0c22f-26fb-4715-83b5-aa99791bc7d0",
+  "versionId": "e2015253-3966-4c9f-8e01-0f776a4efb5f",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5a5b8ac8389feddc977e5c16a7913b4b6f5e535dd242b33601799202229fac62"
