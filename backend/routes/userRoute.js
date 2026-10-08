@@ -4,6 +4,7 @@ import authUser from '../middleware/authUser.js';
 import upload from '../middleware/multer.js';
 import { getMessages } from '../controllers/messageController.js';
 import { uploadChatFile } from '../controllers/uploadController.js';
+import { chat, confirmBooking, cancelPending } from '../controllers/assistantController.js';
 
 const userRouter = express.Router();
 
@@ -31,5 +32,8 @@ userRouter.post('/upload/chat-file', authUser, upload.single('file'), uploadChat
 // Email test endpoint (secured)
 userRouter.post('/test-email', authUser, sendTestEmail);
 
+userRouter.post("/assistant/chat", authUser, chat);
+userRouter.post("/assistant/bookings/:id/confirm", authUser, confirmBooking);
+userRouter.post("/assistant/bookings/:id/cancel", authUser, cancelPending);
 
 export default userRouter

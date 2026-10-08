@@ -8,7 +8,7 @@ import appointmentModel from "../models/appointmentModel.js";
 import messageModel from "../models/messageModel.js";
 import crypto from "crypto";
 import { sendEmail } from "../services/emailService.js";
-import { reserveSlot, releaseSlot, isValidSlotDate, isValidSlotTime } from "../services/slotService.js";
+import { createBooking } from "../services/bookingService.js";
 import { emitEvent } from "../services/eventService.js";
 
 
@@ -143,72 +143,8 @@ const updateProfile = async (req, res) => {
 // API for book an appointment
 const bookAppointment = async (req, res) => {
   try {
-    const userId = req.userId;
-    const { docId, slotDate, slotTime } = req.body;
-
-    // Validate slotDate strictly: it becomes a MongoDB field path key
-    // (slots_booked.<slotDate>). A value with '.' or '$' could change which
-    // field the update touches — this is the NoSQL injection defence.
-    if (!isValidSlotDate(slotDate)) {
-      return res.json({ success: false, message: "Invalid slot date format" });
-    }
-    if (!isValidSlotTime(slotTime)) {
-      return res.json({ success: false, message: "Invalid slot time" });
-    }
-
-    // Atomically claim the slot. Returns null if:
-    //   - doctor not found
-    //   - doctor is not available
-    //   - slot is already taken (race-condition-safe)
-    const docData = await reserveSlot(docId, slotDate, slotTime);
-
-    if (!docData) {
-      // Distinguish the three failure reasons for a clear error message
-      const doc = await doctorModel.findById(docId).select("availability");
-      if (!doc)          return res.json({ success: false, message: "Doctor not found" });
-      if (!doc.availability) return res.json({ success: false, message: "Doctor not available" });
-      return res.json({ success: false, message: "Slot not available" });
-    }
-
-    const userData = await userModel.findById(userId).select("-password");
-
-    const cleanDocData = docData.toObject();
-    delete cleanDocData.slots_booked; // exclude booked slots when embedding doctor data in appointment record
-
-    const appointmentData = {
-      userId,
-      docId,
-      userData,
-      docData: {
-        ...cleanDocData,
-        address: docData.address,
-      },
-      amount: docData.fees,
-      slotTime,
-      slotDate,
-      date: Date.now(),
-    };
-
-    const newAppointment = new appointmentModel(appointmentData);
-    try {
-      await newAppointment.save();
-    } catch (saveErr) {
-      // Roll back the slot so it doesn't stay blocked with no appointment attached
-      await releaseSlot(docId, slotDate, slotTime);
-      throw saveErr;
-    }
-
-    emitEvent("appointment.booked", {
-      appointmentId: newAppointment._id,
-      patientName: userData.name,
-      patientEmail: userData.email,
-      doctorName: docData.name,
-      doctorEmail: docData.email,
-      slotDate,
-      slotTime,
-    });
-
-    res.json({ success: true, message: "Appointment Booked" });
+    const result = await createBooking({ userId: req.userId, ...req.body });
+    res.json(result);
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });

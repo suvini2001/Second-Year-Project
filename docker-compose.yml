@@ -7,6 +7,7 @@ services:
       DOCOP_WEBHOOK_SECRET: ${DOCOP_WEBHOOK_SECRET}
       DOCOP_INTERNAL_KEY: ${DOCOP_INTERNAL_KEY}
       N8N_WEBHOOK_BASE: http://n8n:5678/webhook
+      N8N_ASSISTANT_URL: ${N8N_ASSISTANT_URL}
     ports:
       - "8000:8000"
     restart: unless-stopped
@@ -77,7 +78,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:5678/healthz || exit 1"]
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:5678/healthz || exit 1" ]
       interval: 30s
       retries: 3
   # mcp-server:        # added in a later phase

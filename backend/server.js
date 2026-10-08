@@ -7,12 +7,14 @@ import adminRouter from "./routes/adminRoute.js";
 import doctorRouter from "./routes/doctorRoute.js";
 import userRouter from "./routes/userRoute.js";
 import internalRouter from "./routes/internalRoute.js";
+import assistantInternalRouter from "./routes/assistantInternalRoute.js";
 import { Server } from "socket.io";
 import http from "http";
 import jwt from "jsonwebtoken";
 import messageModel from "./models/messageModel.js";
 import appointmentModel from "./models/appointmentModel.js";
 import processedEventModel from "./models/processedEventModel.js";
+import pendingBookingModel from "./models/pendingBookingModel.js";
 import mongoose from "mongoose";
 
 // dotenv already loaded above via ESM import
@@ -411,6 +413,7 @@ mongoose.connection.once("open", async () => {
   // Ensure schema-defined indexes exist and obsolete ones are dropped
   await messageModel.createIndexes();
   await processedEventModel.createIndexes();
+  await pendingBookingModel.createIndexes();
   console.log("Message indexes synced!");
 });
 
@@ -446,6 +449,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api/doctor", doctorRouter);
 app.use("/api/user", userRouter);
 app.use("/api/internal", internalRouter);
+app.use("/api/internal/assistant", assistantInternalRouter);
 
 //api endpoints
 
