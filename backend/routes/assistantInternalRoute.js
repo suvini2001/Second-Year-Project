@@ -85,7 +85,7 @@ router.post("/bookings/request", async (req, res) => {
     // if the slot is not free This is useful because another patient might have booked the slot after the AI originally checked it.
     if (!free) return res.json({ ok: false, reason: "That slot isn't available. Check availability again." });
 
-    // cancle any previous pending booking -- only one pending booking at a time 
+    // cancel any previous pending booking -- only one pending booking at a time 
     await pendingBookingModel.updateMany({ userId, status: "pending" }, { status: "cancelled" }); // one at a time
 
     //Create the temporary booking

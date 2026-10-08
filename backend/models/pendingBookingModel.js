@@ -8,7 +8,7 @@ const pendingBookingSchema = new mongoose.Schema({
     slotDate: { type: String, required: true },
     slotTime: { type: String, required: true },
     fee: Number,
-    status: { type: String, enum: ["pending", "confirm ed", "cancelled"], default: "pending" },
+    status: { type: String, enum: ["pending", "confirmed", "cancelled"], default: "pending" },
     expiresAt: { type: Date, required: true, index: { expires: 0 } }, // auto-delete when expired
 });
 

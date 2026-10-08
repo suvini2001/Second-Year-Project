@@ -1,9 +1,24 @@
+import crypto from "crypto";
+import mongoose from "mongoose";
+import pendingBookingModel from "../models/pendingBookingModel.js";
+import { createBooking } from "../services/bookingService.js";
 // POST /api/user/assistant/chat  { message, sessionId }
 // This function handles when the patient sends a message to the AI.
-export const chat = async (req, res) => {
+const chatRateLimits = new Map();
 
-    // get and clea the patient's message
-    const message = String(req.body.message || "").trim().slice(0, 1000); // limit is 1000 charctors
+export const chat = async (req, res) => {
+    // Rate limit: 20 messages per minute per user
+    const now = Date.now();
+    const timestamps = chatRateLimits.get(req.userId) || [];
+    const recent = timestamps.filter(t => now - t < 60000);
+    if (recent.length >= 20) {
+        return res.json({ success: false, message: "Too many messages. Please wait a minute." });
+    }
+    recent.push(now);
+    chatRateLimits.set(req.userId, recent);
+
+    // get and clean the patient's message
+    const message = String(req.body.message || "").trim().slice(0, 1000); // limit is 1000 characters
     const sessionId = String(req.body.sessionId || "").slice(0, 64);
     if (!message) return res.json({ success: false, message: "Empty message" });
 
@@ -77,6 +92,7 @@ export const confirmBooking = async (req, res) => {
 //is used when the patient presses:
 
 export const cancelPending = async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.json({ success: false, message: "Bad id" });
     await pendingBookingModel.updateOne({ _id: req.params.id, userId: req.userId, status: "pending" }, { status: "cancelled" });
     res.json({ success: true });
 };

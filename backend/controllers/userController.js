@@ -7,6 +7,7 @@ import doctorModel from "../models/doctorModel.js";
 import appointmentModel from "../models/appointmentModel.js";
 import messageModel from "../models/messageModel.js";
 import crypto from "crypto";
+import { releaseSlot } from "../services/slotService.js";
 import { sendEmail } from "../services/emailService.js";
 import { createBooking } from "../services/bookingService.js";
 import { emitEvent } from "../services/eventService.js";
@@ -143,7 +144,8 @@ const updateProfile = async (req, res) => {
 // API for book an appointment
 const bookAppointment = async (req, res) => {
   try {
-    const result = await createBooking({ userId: req.userId, ...req.body });
+    const { docId, slotDate, slotTime } = req.body;
+    const result = await createBooking({ userId: req.userId, docId, slotDate, slotTime });
     res.json(result);
   } catch (error) {
     console.log(error);

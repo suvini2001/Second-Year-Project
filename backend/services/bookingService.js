@@ -10,7 +10,7 @@ export async function createBooking({ userId, docId, slotDate, slotTime }) {
 
   const docData = await reserveSlot(docId, slotDate, slotTime);
   if (!docData) {
-    // check if the doctor exits
+    // check if the doctor exists
     const doc = await doctorModel.findById(docId).select("availability"); 
     // if someone sends an invalid docID --> error
     if (!doc) return { success: false, message: "Doctor not found" };
