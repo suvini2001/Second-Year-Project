@@ -336,7 +336,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "   {{ JSON.stringify({ reply: \"Sorry, I'm getting a lot of requests right now. Please try again in a minute, or book directly from the Doctors page.\" }) }}",
+        "responseBody": "={{ JSON.stringify({ reply: \"Sorry, I'm getting a lot of requests right now. Please try again in a minute, or book directly from the Doctors page.\" }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.respondToWebhook",
@@ -496,7 +496,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "e2015253-3966-4c9f-8e01-0f776a4efb5f",
+  "versionId": "d0505cc0-7146-48b5-99f3-88c56f7b8d67",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5a5b8ac8389feddc977e5c16a7913b4b6f5e535dd242b33601799202229fac62"
