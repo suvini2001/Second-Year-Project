@@ -38,7 +38,7 @@ export const chat = async (req, res) => {
         const r = await fetch(process.env.N8N_ASSISTANT_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-docop-timestamp": ts, "x-docop-signature": signature },
-            body, signal: AbortSignal.timeout(30000),  // 30s timeout do not wait forever
+            body, signal: AbortSignal.timeout(90000),  // 90s timeout do not wait forever
         });
 
         // check whether the n8n responde succesfully 

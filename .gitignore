@@ -52,3 +52,6 @@ backend-log.txt
 
 
 test_assistant.py
+*.docx
+~$*
+chatbot workflow.docx

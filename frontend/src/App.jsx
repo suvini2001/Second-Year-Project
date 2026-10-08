@@ -1,4 +1,4 @@
-import { Route,Routes } from "react-router-dom"
+import { Route, Routes } from "react-router-dom"
 import NavBar from "./components/NavBar"
 import Footer from "./components/Footer"
 import Home from "./pages/Home"
@@ -14,6 +14,7 @@ import MockPayment from "./pages/MockPayment";
 import UserChatPage from "./pages/UserChatPage";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import AssistantWidget from "./components/AssistantWidget";
 
 const App = () => {
   return (
@@ -21,9 +22,9 @@ const App = () => {
       <ToastContainer />
       <NavBar />
       <Routes>
-        <Route path="/" element={<Home/>} />
-        <Route path="/doctors" element={<Doctors/>} />
-        <Route path="/doctors/:speciality" element={<Doctors/>} />
+        <Route path="/" element={<Home />} />
+        <Route path="/doctors" element={<Doctors />} />
+        <Route path="/doctors/:speciality" element={<Doctors />} />
         <Route path="/login" element={<Login />} />
         <Route path="/about" element={<About />} />
         <Route path="/Contact" element={<Contact />} />
@@ -34,10 +35,11 @@ const App = () => {
         <Route path="/user-chat/:appointmentId" element={<UserChatPage />} />
         <Route path="/chat/:appointmentId" element={<UserChatPage />} />
         <Route path="/Messages" element={<Messages />} />
-  
+
       </Routes>
       <Footer />
-      
+      <AssistantWidget />
+
     </div>
   )
 }
