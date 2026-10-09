@@ -16,6 +16,7 @@ import appointmentModel from "./models/appointmentModel.js";
 import processedEventModel from "./models/processedEventModel.js";
 import pendingBookingModel from "./models/pendingBookingModel.js";
 import mongoose from "mongoose";
+import mcpRouter from "./routes/mcpRoute.js";
 
 // dotenv already loaded above via ESM import
 
@@ -450,7 +451,7 @@ app.use("/api/doctor", doctorRouter);
 app.use("/api/user", userRouter);
 app.use("/api/internal", internalRouter);
 app.use("/api/internal/assistant", assistantInternalRouter);
-
+app.use("/api/mcp", mcpRouter); // Phase 4: read-only data for the MCP server
 //api endpoints
 
 app.get("/", (req, res) => {

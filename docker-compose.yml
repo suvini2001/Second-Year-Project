@@ -6,6 +6,7 @@ services:
       CORS_ORIGINS: http://localhost:5173,http://localhost:5174
       DOCOP_WEBHOOK_SECRET: ${DOCOP_WEBHOOK_SECRET}
       DOCOP_INTERNAL_KEY: ${DOCOP_INTERNAL_KEY}
+      DOCOP_MCP_KEY: ${DOCOP_MCP_KEY}
       N8N_WEBHOOK_BASE: http://n8n:5678/webhook
       N8N_ASSISTANT_URL: ${N8N_ASSISTANT_URL}
     ports:
@@ -81,8 +82,25 @@ services:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:5678/healthz || exit 1" ]
       interval: 30s
       retries: 3
-  # mcp-server:        # added in a later phase
-  #   build: ./mcp-server
+  mcp-server:
+    build: ./mcp-server
+    environment:
+      PORT: 3001
+      DOCOP_API_URL: http://backend:8000
+      DOCOP_MCP_KEY: ${DOCOP_MCP_KEY}
+      MCP_ADMIN_TOKEN: ${MCP_ADMIN_TOKEN}
+      MCP_ASSISTANT_TOKEN: ${MCP_ASSISTANT_TOKEN}
+    ports:
+      - "127.0.0.1:3001:3001" # only your own computer can reach it
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "wget", "-qO-", "http://localhost:3001/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
 volumes:
   mongo-data:
