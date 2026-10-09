@@ -24,20 +24,19 @@ const chain = (value) => ({
     lean: async () => value,
 });
 
-jest.unstable_mockModule('../models/doctorModel.js', () => {
-    const mock = jest.fn();
-    mock.find = jest.fn();
-    mock.findById = jest.fn();
-    return { default: mock };
-});
+// Each mock is created ONCE, outside its factory. Jest may run a factory more than once
+// when several files import the same module at the same time (server.js imports many routes),
+// and two copies would mean the test configures one mock while the route uses the other.
+const doctorModelMock = jest.fn();
+doctorModelMock.find = jest.fn();
+doctorModelMock.findById = jest.fn();
+jest.unstable_mockModule('../models/doctorModel.js', () => ({ default: doctorModelMock }));
 
-jest.unstable_mockModule('../models/appointmentModel.js', () => {
-    const mock = jest.fn();
-    mock.find = jest.fn();
-    mock.findOneAndUpdate = jest.fn();
-    mock.countDocuments = jest.fn();
-    return { default: mock };
-});
+const appointmentModelMock = jest.fn();
+appointmentModelMock.find = jest.fn();
+appointmentModelMock.findOneAndUpdate = jest.fn();
+appointmentModelMock.countDocuments = jest.fn();
+jest.unstable_mockModule('../models/appointmentModel.js', () => ({ default: appointmentModelMock }));
 
 jest.unstable_mockModule('../models/messageModel.js', () => {
     const mock = jest.fn();
