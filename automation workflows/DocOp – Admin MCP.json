@@ -28,9 +28,9 @@
         "description": "Look up how many appointments one doctor has on one day, with times, patient first names and payment status. Read-only: it never sends anything. Use a date in YYYY-MM-DD (Sri Lanka time). If several doctors match, ask the user which one.",
         "workflowId": {
           "__rl": true,
-          "value": "PICK_FROM_LIST",
-          "mode": "list",
-          "cachedResultName": "DocOp – Doctor day summary"
+          "value": "HKsEDUVbDpkfDQAa",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/HKsEDUVbDpkfDQAa"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -90,9 +90,9 @@
         "description": "Email the doctor a summary of their appointments for one day. The email content is built from DocOp data, not written by you. Only use this when the user asks to send it.",
         "workflowId": {
           "__rl": true,
-          "value": "PICK_FROM_LIST",
-          "mode": "list",
-          "cachedResultName": "DocOp – Doctor day summary"
+          "value": "HKsEDUVbDpkfDQAa",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/HKsEDUVbDpkfDQAa"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -182,7 +182,7 @@
     "callerPolicy": "workflowsFromSameOwner",
     "availableInMCP": false
   },
-  "versionId": "d206f619-3cdf-4e97-9a1e-bb24c2fc1013",
+  "versionId": "40862d6e-c9c7-4c1a-8540-2afa614c46f8",
   "meta": {
     "instanceId": "5a5b8ac8389feddc977e5c16a7913b4b6f5e535dd242b33601799202229fac62"
   },
