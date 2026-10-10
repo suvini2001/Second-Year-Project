@@ -1,0 +1,177 @@
+{
+  "name": "DocOp – Admin MCP",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "bearerAuth",
+        "path": "docop-admin",
+        "instructions": "DocOp clinic admin tools (Sri Lanka time, UTC+05:30). Dates are always YYYY-MM-DD. Use doctor_day_report to answer questions about one doctor's appointments on one day. Only use send_doctor_summary when the user asks to send or email the summary, after you have shown them the report. If a tool returns ok:false with matches, ask the user which doctor they mean instead of guessing."
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0f8bf1e6-ad6f-40eb-8908-c17156bbaf25",
+      "name": "MCP Server Trigger",
+      "webhookId": "892c7d42-28cb-42cd-ae64-b72917d409f2"
+    },
+    {
+      "parameters": {
+        "description": "Look up how many appointments one doctor has on one day, with times, patient first names and payment status. Read-only: it never sends anything. Use a date in YYYY-MM-DD (Sri Lanka time). If several doctors match, ask the user which one.",
+        "workflowId": {
+          "__rl": true,
+          "value": "PICK_FROM_LIST",
+          "mode": "list",
+          "cachedResultName": "DocOp – Doctor day summary"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "doctorName": "={{ $fromAI('doctorName', 'Doctor name, for example Perera or Dr. Anjali Perera', 'string') }}",
+            "date": "={{ $fromAI('date', 'The day in YYYY-MM-DD format (Sri Lanka time)', 'string') }}",
+            "action": "preview"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "doctorName",
+              "displayName": "doctorName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "action",
+              "displayName": "action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -160,
+        240
+      ],
+      "id": "f26dc77e-4d80-454e-9b16-46621f040d19",
+      "name": "doctor_day_report"
+    },
+    {
+      "parameters": {
+        "description": "Email the doctor a summary of their appointments for one day. The email content is built from DocOp data, not written by you. Only use this when the user asks to send it.",
+        "workflowId": {
+          "__rl": true,
+          "value": "PICK_FROM_LIST",
+          "mode": "list",
+          "cachedResultName": "DocOp – Doctor day summary"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "doctorName": "={{ $fromAI('doctorName', 'Doctor name, for example Perera or Dr. Anjali Perera', 'string') }}",
+            "date": "={{ $fromAI('date', 'The day in YYYY-MM-DD format (Sri Lanka time)', 'string') }}",
+            "action": "send"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "doctorName",
+              "displayName": "doctorName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "action",
+              "displayName": "action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        240
+      ],
+      "id": "72976cb6-5d05-47b4-a596-27821dfac1f8",
+      "name": "send_doctor_summary"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "doctor_day_report": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_doctor_summary": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "es79rPnw4s2ZbNQr",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": []
+}

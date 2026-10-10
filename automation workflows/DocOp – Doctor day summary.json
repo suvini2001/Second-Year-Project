@@ -1,0 +1,313 @@
+{
+  "name": "DocOp – Doctor day summary",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "doctorName"
+            },
+            {
+              "name": "date"
+            },
+            {
+              "name": "action"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c8eb93d7-406a-475b-adae-e7c669f8cd32",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.DOCOP_API_URL }}/api/internal/doctors/day-summary",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "doctorName",
+              "value": "={{ $json.doctorName }}"
+            },
+            {
+              "name": "date",
+              "value": "={{ $json.date }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-internal-key",
+              "value": "={{ $env.DOCOP_INTERNAL_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "17cba62b-11c4-4d7e-b7e1-44ba3b640813",
+      "name": "Get day summary",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "656f0a74-1216-4bdf-9d88-25fcb2bcbe3e",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        0
+      ],
+      "id": "389a7c8a-b063-4fd3-8efe-c746b8a08227",
+      "name": "Found?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// The doctor wasn't found (404), the name matched several doctors (409), or the date was bad (400).\n// Return a readable answer so Claude can ask the admin instead of crashing.\nconst r = $input.first().json;\nreturn [{ json: {\n  ok: false,\n  message: r.body?.error || `DocOp API error ${r.statusCode}`,\n  matches: r.body?.matches || [],\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        160
+      ],
+      "id": "aa34d3cc-b847-41a8-8854-cf1348834aff",
+      "name": "Explain problem"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "72a36c25-cc8f-49d8-bd7a-bce86243e0f7",
+              "leftValue": "={{ $('When Executed by Another Workflow').first().json.action }}",
+              "rightValue": "send",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        -112
+      ],
+      "id": "5e94ce5f-9f43-4102-9dda-9834ac9f674a",
+      "name": "Send?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Preview: the count and times only. The doctor's email is NOT returned to Claude.\nconst s = $('Get day summary').first().json.body;\nreturn [{ json: {\n  ok: true, sent: false,\n  doctor: s.doctorName, date: s.date, count: s.count,\n  appointments: s.appointments.map(a => ({ time: a.time, patient: a.patient, status: a.status, paid: a.paid })),\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "id": "d51349b5-d19d-4c02-8860-f432224e4209",
+      "name": "Preview"
+    },
+    {
+      "parameters": {
+        "jsCode": "// The email is built from database data only; the AI writes none of it.\nconst s = $('Get day summary').first().json.body;\n// escape text from the database before putting it in HTML\nconst esc = (v) => String(v ?? '').replace(/[&<>\"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[c]));\n\nconst rows = s.appointments\n  .map(a => `<tr><td>${esc(a.time)}</td><td>${esc(a.patient)}</td><td>${a.paid ? 'Paid' : 'Not paid'}</td></tr>`)\n  .join('');\n\nconst html = s.count === 0\n  ? `<p>Hello ${esc(s.doctorName)},</p><p>You have no DocOp appointments on ${esc(s.date)}.</p><p>DocOp</p>`\n  : `<p>Hello ${esc(s.doctorName)},</p>\n     <p>You have <b>${s.count}</b> appointment(s) on ${esc(s.date)} (Sri Lanka time):</p>\n     <table border=\"1\" cellpadding=\"6\" style=\"border-collapse:collapse\">\n       <tr><th>Time</th><th>Patient</th><th>Payment</th></tr>${rows}\n     </table>\n     <p>DocOp</p>`;\n\nreturn [{ json: { to: s.doctorEmail, subject: `Your DocOp appointments on ${s.date}`, html } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -224
+      ],
+      "id": "63fbea37-2afa-4beb-ab88-605bed0a47ba",
+      "name": "Build email"
+    },
+    {
+      "parameters": {
+        "sendHTML": true,
+        "subject": "={{ $json.subject }}",
+        "htmlContent": "={{ $json.html }}",
+        "sender": "docopservice@docop.me",
+        "receipients": "={{ $json.to }}",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.sendInBlue",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -224
+      ],
+      "id": "567f4233-44a7-48b3-a48f-50bdea62ff58",
+      "name": "Email the doctor",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "sendInBlueApi": {
+          "id": "G0T6kzjmpA40l2G5",
+          "name": "Brevo account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Tell Claude it worked, with a masked address only (a***@gmail.com).\nconst s = $('Get day summary').first().json.body;\nreturn [{ json: {\n  ok: true, sent: true,\n  doctor: s.doctorName, date: s.date, count: s.count,\n  sentTo: String(s.doctorEmail || '').replace(/^(.).*(@.*)$/, '$1***$2'),\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        -224
+      ],
+      "id": "bbf9af3c-d7fd-417c-bfcb-1be2f83933bd",
+      "name": "Sent"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Get day summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get day summary": {
+      "main": [
+        [
+          {
+            "node": "Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Found?": {
+      "main": [
+        [
+          {
+            "node": "Send?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Explain problem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send?": {
+      "main": [
+        [
+          {
+            "node": "Build email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build email": {
+      "main": [
+        [
+          {
+            "node": "Email the doctor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email the doctor": {
+      "main": [
+        [
+          {
+            "node": "Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "es79rPnw4s2ZbNQr",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": []
+}
