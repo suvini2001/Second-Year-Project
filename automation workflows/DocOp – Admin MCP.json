@@ -10,12 +10,18 @@
       "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
       "typeVersion": 2,
       "position": [
-        0,
-        0
+        -176,
+        -32
       ],
-      "id": "0f8bf1e6-ad6f-40eb-8908-c17156bbaf25",
+      "id": "298ac916-f4a6-4702-8c64-c50408483add",
       "name": "MCP Server Trigger",
-      "webhookId": "892c7d42-28cb-42cd-ae64-b72917d409f2"
+      "webhookId": "892c7d42-28cb-42cd-ae64-b72917d409f2",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "DfSw9sTTqgx9dEMI",
+          "name": "DocOp n8n MCP"
+        }
+      }
     },
     {
       "parameters": {
@@ -73,10 +79,10 @@
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.2,
       "position": [
-        -160,
-        240
+        -336,
+        208
       ],
-      "id": "f26dc77e-4d80-454e-9b16-46621f040d19",
+      "id": "ea8ab1a7-c8d5-4506-b2bb-c4964082c71d",
       "name": "doctor_day_report"
     },
     {
@@ -135,10 +141,10 @@
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.2,
       "position": [
-        160,
-        240
+        -16,
+        208
       ],
-      "id": "72976cb6-5d05-47b4-a596-27821dfac1f8",
+      "id": "5ef589f2-949f-42d9-b63b-c6e5af1b073f",
       "name": "send_doctor_summary"
     }
   ],
@@ -167,11 +173,20 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
     "errorWorkflow": "es79rPnw4s2ZbNQr",
-    "callerPolicy": "workflowsFromSameOwner"
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
+  "versionId": "d206f619-3cdf-4e97-9a1e-bb24c2fc1013",
+  "meta": {
+    "instanceId": "5a5b8ac8389feddc977e5c16a7913b4b6f5e535dd242b33601799202229fac62"
+  },
+  "nodeGroups": [],
+  "id": "2lt1WzcQwaiLk70d",
   "tags": []
 }

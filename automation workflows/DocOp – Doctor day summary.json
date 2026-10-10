@@ -20,10 +20,10 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
       "position": [
-        0,
-        0
+        -896,
+        224
       ],
-      "id": "c8eb93d7-406a-475b-adae-e7c669f8cd32",
+      "id": "732383dc-1db7-452e-b98f-876c5794b449",
       "name": "When Executed by Another Workflow"
     },
     {
@@ -64,10 +64,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.5,
       "position": [
-        224,
-        0
+        -672,
+        224
       ],
-      "id": "17cba62b-11c4-4d7e-b7e1-44ba3b640813",
+      "id": "53212ca8-bb0c-4121-b2e4-feec99822b82",
       "name": "Get day summary",
       "retryOnFail": true,
       "maxTries": 3,
@@ -100,10 +100,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        448,
-        0
+        -448,
+        224
       ],
-      "id": "389a7c8a-b063-4fd3-8efe-c746b8a08227",
+      "id": "a4ad3d75-2bcd-413f-8edd-e8c7ad87d303",
       "name": "Found?"
     },
     {
@@ -113,10 +113,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        672,
-        160
+        -224,
+        384
       ],
-      "id": "aa34d3cc-b847-41a8-8854-cf1348834aff",
+      "id": "e43f41d2-a37f-4cd2-83cf-131a1d83eff1",
       "name": "Explain problem"
     },
     {
@@ -146,10 +146,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        672,
-        -112
+        -224,
+        112
       ],
-      "id": "5e94ce5f-9f43-4102-9dda-9834ac9f674a",
+      "id": "385c710e-c639-4b56-991d-acbb6e9c2c2d",
       "name": "Send?"
     },
     {
@@ -159,10 +159,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        896,
-        0
+        0,
+        224
       ],
-      "id": "d51349b5-d19d-4c02-8860-f432224e4209",
+      "id": "6f01e317-5d0f-4968-b980-d8031806bf7e",
       "name": "Preview"
     },
     {
@@ -172,10 +172,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        896,
-        -224
+        0,
+        0
       ],
-      "id": "63fbea37-2afa-4beb-ab88-605bed0a47ba",
+      "id": "855d9f6f-f506-4fd2-b185-d620ffe28e15",
       "name": "Build email"
     },
     {
@@ -191,10 +191,10 @@
       "type": "n8n-nodes-base.sendInBlue",
       "typeVersion": 1,
       "position": [
-        1120,
-        -224
+        224,
+        0
       ],
-      "id": "567f4233-44a7-48b3-a48f-50bdea62ff58",
+      "id": "9867a332-c21d-4027-832f-0c1dba2aa93a",
       "name": "Email the doctor",
       "retryOnFail": true,
       "maxTries": 3,
@@ -213,14 +213,24 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1344,
-        -224
+        448,
+        0
       ],
-      "id": "bbf9af3c-d7fd-417c-bfcb-1be2f83933bd",
+      "id": "2216168e-f895-4d4a-8d52-65a954263334",
       "name": "Sent"
     }
   ],
-  "pinData": {},
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "doctorName": "kevin",
+          "date": "2026-10-11",
+          "action": "send"
+        }
+      }
+    ]
+  },
   "connections": {
     "When Executed by Another Workflow": {
       "main": [
@@ -303,11 +313,20 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
     "errorWorkflow": "es79rPnw4s2ZbNQr",
-    "callerPolicy": "workflowsFromSameOwner"
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
+  "versionId": "b1049b99-8130-4421-8e04-12bc03bc0a21",
+  "meta": {
+    "instanceId": "5a5b8ac8389feddc977e5c16a7913b4b6f5e535dd242b33601799202229fac62"
+  },
+  "nodeGroups": [],
+  "id": "HKsEDUVbDpkfDQAa",
   "tags": []
 }
