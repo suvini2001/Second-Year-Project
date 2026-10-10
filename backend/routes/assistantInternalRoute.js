@@ -39,7 +39,7 @@ router.get("/doctors", async (req, res) => {
 router.get("/availability", async (req, res) => {
     const { doctorId } = req.query;
 
-    if (!mongoose.isValidObjectId(doctorId)) return res.json({ error: "Unknown doctorId. Use one from search_doctors." });
+    if (!mongoose.isValidObjectId(doctorId)) return res.json({ error: "Unknown doctorId. Use one from list_doctors." });
     
     const { slotDate, error } = toSlotDate(req.query.date);
     if (error) return res.json({ error });
@@ -77,7 +77,7 @@ router.post("/bookings/request", async (req, res) => {
 
     // these come from the AI: answer with a readable reason so it can correct itself
     if (!mongoose.isValidObjectId(doctorId))
-        return res.json({ ok: false, reason: "Unknown doctorId. Use one returned by search_doctors." });
+        return res.json({ ok: false, reason: "Unknown doctorId. Use one returned by list_doctors." });
     const { slotDate, error } = toSlotDate(req.body.date);
     if (error) return res.json({ ok: false, reason: error });
     if (!isValidSlotTime(time))

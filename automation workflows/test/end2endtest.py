@@ -245,7 +245,9 @@ def main():
 
     s, b, _ = http("GET", f"{api}/api/user/appointments", headers=auth)
     before = [a for a in b.get("appointments", []) if not a.get("cancelled")] if isinstance(b, dict) else []
-    same = [a for a in before if a.get("slotTime") == target["slot"] and a.get("docId") == doc_id]
+    parts = target["date"].split("-")
+    slot_date = f"{int(parts[2])}_{int(parts[1])}_{parts[0]}"
+    same = [a for a in before if a.get("slotTime") == target["slot"] and a.get("docId") == doc_id and a.get("slotDate") == slot_date]
     report("PASS" if not same else "FAIL", "A pending booking is NOT an appointment yet")
 
     # ------------------------------------------------------------ D
