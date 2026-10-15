@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: docop
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000          # the "node" user; Kubernetes needs the number to verify non-root
+      containers:
+        - name: backend
+          image: ghcr.io/suvini2001/docop-backend:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: backend-env       # backend/.env: MongoDB, JWT, Cloudinary, Brevo ...
+            - configMapRef:
+                name: docop-config      # listed last, so it overrides PORT, NODE_ENV, CORS_ORIGINS from .env
+          env:
+            # only the shared secrets the backend needs (least privilege)
+            - name: DOCOP_WEBHOOK_SECRET
+              valueFrom: { secretKeyRef: { name: docop-secrets, key: DOCOP_WEBHOOK_SECRET } }
+            - name: DOCOP_INTERNAL_KEY
+              valueFrom: { secretKeyRef: { name: docop-secrets, key: DOCOP_INTERNAL_KEY } }
+            - name: DOCOP_MCP_KEY
+              valueFrom: { secretKeyRef: { name: docop-secrets, key: DOCOP_MCP_KEY } }
+          startupProbe:                 # gives the app up to 60 s to boot before the other probes start
+            httpGet: { path: /api/live, port: http }
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:               # 503 while MongoDB is down -> pod gets no traffic
+            httpGet: { path: /api/health, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:                # process stuck -> restart. Does NOT check MongoDB (see doc)
+            httpGet: { path: /api/live, port: http }
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: docop
+spec:
+  selector:
+    app: backend
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

@@ -433,6 +433,10 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// Liveness: "is the process alive?" Never checks MongoDB.
+// Kubernetes restarts a pod when this fails; /api/health (readiness) only takes it out of traffic.
+app.get("/api/live", (req, res) => res.json({ status: "alive" }));
+
 // Docker's HEALTHCHECK, Kubernetes liveness and readiness probes, uptime monitors, and n8n all need one URL that answers "is this service working?".
 // Kubernetes uses the answer to stop sending traffic to a broken pod and to restart it.
 

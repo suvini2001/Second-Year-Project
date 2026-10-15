@@ -1,0 +1,16 @@
+# Settings that are NOT secret. Secrets are created with kubectl (see K8S.md), never committed.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: docop-config
+  namespace: docop
+data:
+  NODE_ENV: "production"
+  PORT: "8000"
+  TZ: "Asia/Colombo"
+  CORS_ORIGINS: "http://docop.localhost"
+  FRONTEND_URL: "http://docop.localhost"
+  # Inside the cluster, services are reached by their Service name (same rule as Docker Compose)
+  N8N_WEBHOOK_BASE: "http://n8n:5678/webhook"
+  N8N_ASSISTANT_URL: "http://n8n:5678/webhook/docop-assistant"
+  DOCOP_API_URL: "http://backend:8000"

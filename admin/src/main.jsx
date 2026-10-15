@@ -8,7 +8,7 @@ import DoctorContextProvider from './contexts/doctorContext.jsx'
 import AppContextProvider from './contexts/appContext.jsx'
 
 createRoot(document.getElementById('root')).render(
-  <BrowserRouter>
+  <BrowserRouter basename={import.meta.env.BASE_URL}>
     <AdminContextProvider>
       <DoctorContextProvider>
         <AppContextProvider>

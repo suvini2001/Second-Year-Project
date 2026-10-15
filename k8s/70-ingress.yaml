@@ -1,0 +1,54 @@
+# Main site: one address for the patient site, the API and Socket.IO.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: docop
+  namespace: docop
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: docop.localhost
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend: { service: { name: backend, port: { number: 8000 } } }
+          - path: /socket.io            # the chat connects to the same address as the API
+            pathType: Prefix
+            backend: { service: { name: backend, port: { number: 8000 } } }
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: frontend, port: { number: 80 } } }
+    - host: n8n.docop.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: n8n, port: { number: 5678 } } }
+---
+# Admin panel under /admin. A separate Ingress because only this route strips the prefix.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-admin
+  namespace: docop
+spec:
+  stripPrefix:
+    prefixes: ["/admin"]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: docop-admin
+  namespace: docop
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: docop-strip-admin@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: docop.localhost
+      http:
+        paths:
+          - path: /admin
+            pathType: Prefix
+            backend: { service: { name: admin, port: { number: 80 } } }

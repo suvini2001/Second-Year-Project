@@ -40,4 +40,10 @@ describe('GET /api/health', () => {
         expect(res.status).toBe(503);
         expect(res.body).toMatchObject({ status: 'degraded', db: 'disconnected' });
     });
+
+    test('GET /api/live answers 200 without checking the database', async () => {
+        const res = await request(app).get('/api/live');
+        expect(res.status).toBe(200);
+        expect(res.body.status).toBe('alive');
+    });
 });

@@ -1,0 +1,74 @@
+# Headless Service: gives the StatefulSet pod a stable DNS name, "postgres"
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: docop
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - name: pg
+      port: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: docop
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - name: pg
+              containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: n8n
+            - name: POSTGRES_DB
+              value: n8n
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: docop-secrets
+                  key: N8N_DB_PASSWORD
+            # a sub-folder, because a fresh volume contains "lost+found" and Postgres refuses a non-empty folder
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "n8n", "-d", "n8n"]
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "n8n", "-d", "n8n"]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 512Mi }
+  # One PersistentVolumeClaim per pod, kept when the pod is deleted or rescheduled
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
