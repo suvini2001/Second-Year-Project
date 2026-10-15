@@ -140,7 +140,7 @@ Runs against the real stack (backend → n8n → AI → tools), standard library
 python "automation workflows/test/end2endtest.py" --email <test patient> --password <password> --book
 ```
 
-Latest result (Phase 4, with the MCP tools): `PASS __  FAIL 0  WARN __` *(fill in from your last run)*
+Latest result (Phase 4, with the MCP tools): `PASS 30  FAIL 0  WARN 2`
 
 The Phase 3 run gave `PASS 27  FAIL 3  WARN 3`; the 3 FAILs were checks in the script itself (date format and how a pending booking is matched), fixed in Phase 4.
 
@@ -158,8 +158,8 @@ The Phase 3 run gave `PASS 27  FAIL 3  WARN 3`; the 3 FAILs were checks in the s
 | Chat without logging in | 401 | PASS |
 | Call the n8n webhook directly | 401 | PASS |
 | Stop n8n, then chat | Friendly "unavailable" message; normal booking still works | PASS |
-| "Show today's appointment statistics" (Phase 4) | Refused: the assistant's MCP token has no statistics tool | |
-| Stop `mcp-server`, then ask for doctors (Phase 4) | Polite "busy" reply after the agent's retries; booking from the website still works | |
+| "Show today's appointment statistics" (Phase 4) | Refused: the assistant's MCP token has no statistics tool | PASS |
+| Stop `mcp-server`, then ask for doctors (Phase 4) | Polite "busy" reply after the agent's retries; booking from the website still works | PASS |
 
 ---
 

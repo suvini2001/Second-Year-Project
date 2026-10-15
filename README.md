@@ -19,8 +19,8 @@ The project was upgraded in phases, each on its own branch and tag:
 | Phase | Branch | Tag | What it adds | Docs |
 |---|---|---|---|---|
 | 0 | | | Security and reliability hardening | [docs/PHASE0_SECURITY_HARDENING.md](docs/PHASE0_SECURITY_HARDENING.md) |
-| 1 | `version2.0` | | Docker Compose for the whole stack | [Run with Docker](#run-with-docker) |
-| 2 | `automation` | | n8n automation: signed events, emails, reminders, health monitor, weekly report | [AUTOMATION.md](./AUTOMATION.md) |
+| 1 | `version2.0` | `phase-1-docker` | Docker Compose for the whole stack | [Run with Docker](#run-with-docker) |
+| 2 | `automation` | `phase-2-automation` | n8n automation: signed events, emails, reminders, health monitor, weekly report | [AUTOMATION.md](./AUTOMATION.md) |
 | 3 | `AI-Chat-bot` | `phase-3-ai-assistant` | AI booking assistant (n8n agent + Gemini) with human-confirmed bookings | [ASSISTANT.md](./ASSISTANT.md) |
 | 4 | `MCP` | `phase-4-mcp` | MCP in both directions: DocOp MCP server, n8n as MCP client and server, Claude Desktop demo, nginx | [MCP.md](./MCP.md) |
 

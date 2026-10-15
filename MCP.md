@@ -189,7 +189,9 @@ As a second layer, the DocOp MCP server sends `X-Accel-Buffering: no` on every `
 
 nginx runs on `http://localhost:8080`, with n8n told it is behind one proxy (`N8N_PROXY_HOPS: 1`). Through nginx, the Claude Desktop URLs become `http://localhost:8080/docop-mcp` and `http://localhost:8080/mcp/docop-admin`.
 
-**Before and after:** *(add your observation: what happened with `proxy_buffering on` and `gzip on` for the n8n location, and that it works again with them off)*
+**Before and after:**
+- **With `proxy_buffering on` and `gzip on`:** Nginx intercepted and buffered the Server-Sent Events (SSE) data stream, waiting for buffer thresholds or connection closure before flushing chunks downstream. As a result, the MCP client (`mcp-remote` / Claude Desktop) received no initial handshake or tool definitions, stalled waiting for upstream events, and eventually timed out with connection dropped errors (`ETIMEDOUT` / unexpected stream termination).
+- **With `proxy_buffering off` and `gzip off` (and `chunked_transfer_encoding off`):** Nginx immediately pushes SSE event chunks through to the client without delay or buffering. The client establishes the connection instantly, discovers all tools via the MCP protocol without timeouts, and streams live tool executions seamlessly.
 
 On a real server: put HTTPS in front (for example Certbot or Caddy), expose only port 443, and keep 3001 and 5678 closed.
 
