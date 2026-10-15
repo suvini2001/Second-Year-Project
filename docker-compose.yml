@@ -70,6 +70,7 @@ services:
       DOCOP_WEBHOOK_SECRET: ${DOCOP_WEBHOOK_SECRET}
       DOCOP_INTERNAL_KEY: ${DOCOP_INTERNAL_KEY}
       DOCOP_API_URL: http://backend:8000
+      N8N_PROXY_HOPS: 1
     ports:
       - "5678:5678"
     volumes:
@@ -100,6 +101,17 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      - n8n
+      - mcp-server
     restart: unless-stopped
 
 volumes:
