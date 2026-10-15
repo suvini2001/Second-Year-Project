@@ -8,6 +8,21 @@ This repository contains a full-stack web application for managing medical appoi
 - **backend/**: Node.js/Express REST API with MongoDB, authentication, and file upload.
 - **admin/**: React-based admin dashboard for managing doctors and appointments.
 - **frontend/**: React-based user interface for patients to book appointments, view doctors, and manage profiles.
+- **mcp-server/**: Model Context Protocol server that exposes DocOp data to AI clients as read-only tools.
+- **automation workflows/**: exported n8n workflows (emails, reminders, reports, AI assistant, admin MCP tools).
+- **nginx/**: reverse proxy for n8n and the MCP endpoints.
+
+## Project phases
+
+The project was upgraded in phases, each on its own branch and tag:
+
+| Phase | Branch | Tag | What it adds | Docs |
+|---|---|---|---|---|
+| 0 | | | Security and reliability hardening | [docs/PHASE0_SECURITY_HARDENING.md](docs/PHASE0_SECURITY_HARDENING.md) |
+| 1 | `version2.0` | | Docker Compose for the whole stack | [Run with Docker](#run-with-docker) |
+| 2 | `automation` | | n8n automation: signed events, emails, reminders, health monitor, weekly report | [AUTOMATION.md](./AUTOMATION.md) |
+| 3 | `AI-Chat-bot` | `phase-3-ai-assistant` | AI booking assistant (n8n agent + Gemini) with human-confirmed bookings | [ASSISTANT.md](./ASSISTANT.md) |
+| 4 | `MCP` | `phase-4-mcp` | MCP in both directions: DocOp MCP server, n8n as MCP client and server, Claude Desktop demo, nginx | [MCP.md](./MCP.md) |
 
 ---
 
@@ -82,11 +97,14 @@ Frontend notes
 ```
 2YP/
 │
-├── backend/      # Express API, MongoDB models, routes, controllers
-│
-├── admin/        # React admin dashboard (Vite + Tailwind)
-│
-└── frontend/     # React user interface (Vite + Tailwind)
+├── backend/               # Express API, MongoDB models, routes, controllers
+├── admin/                 # React admin dashboard (Vite + Tailwind)
+├── frontend/              # React user interface (Vite + Tailwind)
+├── mcp-server/            # MCP server: DocOp data as read-only AI tools
+├── automation workflows/  # Exported n8n workflows + end-to-end test script
+├── nginx/                 # Reverse proxy config (MCP-safe, no buffering)
+├── docs/                  # Phase 0 security notes
+└── docker-compose.yml     # The whole stack
 ```
 
 ---
@@ -160,7 +178,7 @@ The chat system is built with Socket.IO and provides secure, private, and persis
 
 ### Prerequisites
 
--   Node.js (v18+ recommended)
+-   Node.js 20 (the Docker images use Node 20)
 -   MongoDB (local or a cloud service like MongoDB Atlas)
 -   A Cloudinary account for file storage.
 
@@ -234,14 +252,12 @@ The chat system is built with Socket.IO and provides secure, private, and persis
 ### Email Notifications
 
 - **Provider:** Brevo (formerly Sendinblue) via SDK `@getbrevo/brevo`.
-- **Purpose:** Send transactional emails, such as payment confirmations to patients and notifications to doctors.
+- **Purpose:** Since Phase 2, appointment emails (booked, paid, cancelled, completed, reminders) are sent by **n8n**, not by the backend. See [AUTOMATION.md](./AUTOMATION.md). The backend helper below is kept for the test endpoint.
 - **Service location:** `backend/services/emailService.js` exports `sendEmail({ to, subject, html, text, sender })`.
 
 ### When emails are sent
-- **Payment confirmation:** After a successful mock payment verification (`POST /api/user/verify-payment`), the backend sends:
-    - A confirmation email to the patient
-    - A notification email to the doctor
-    - Implementation: see `verifyMockPayment` in `backend/controllers/userController.js`
+- **Appointment emails:** the backend emits a signed `appointment.*` event, and the n8n workflow *DocOp – Appointment events* sends the patient and doctor emails.
+- **Doctor day summary:** sent by n8n when an admin approves it in Claude Desktop (see [MCP.md](./MCP.md)).
 
 ### Environment variables
 Add these to `backend/.env` (already shown in Backend Setup above):
@@ -277,7 +293,7 @@ curl -X POST "http://localhost:8000/api/user/test-email" ^
 ### Troubleshooting
 - Verify `BREVO_API_KEY` is valid and not rate‑limited.
 - Ensure `EMAIL_FROM` is a verified sender/domain in Brevo.
-- Check server logs for "Email send failures" emitted from `verifyMockPayment`.
+- For appointment emails, check the workflow's **Executions** in n8n and the backend log line `[event] … not delivered`.
 - Confirm outbound connections are allowed if running behind a firewall.
 
 ---
@@ -292,9 +308,11 @@ curl -X POST "http://localhost:8000/api/user/test-email" ^
 
 ## Run with Docker
 
-See [AUTOMATION.md](./AUTOMATION.md) for the n8n automation setup.
-See [ASSISTANT.md](./ASSISTANT.md) for the AI booking assistant.
-1. Copy `.env.example` to `.env` (root) and fill in the values.
+- [AUTOMATION.md](./AUTOMATION.md): n8n automation setup
+- [ASSISTANT.md](./ASSISTANT.md): the AI booking assistant
+- [MCP.md](./MCP.md): the MCP server, n8n MCP tools and Claude Desktop setup
+
+1. Copy `.env.example` to `.env` (root) and fill in the values. Generate each secret with `openssl rand -hex 32`.
 2. Create `backend/.env` from `backend/.env.example`.
 3. Start everything:
 ```bash
@@ -307,5 +325,7 @@ See [ASSISTANT.md](./ASSISTANT.md) for the AI booking assistant.
 | Admin panel              | http://localhost:5174                            |
 | API                      | http://localhost:8000                            |
 | n8n                      | http://localhost:5678                            |
+| DocOp MCP server         | http://localhost:3001/mcp (bearer token)         |
+| nginx (n8n + MCP proxy)  | http://localhost:8080                            |
 
 Stop with `docker compose down`.
