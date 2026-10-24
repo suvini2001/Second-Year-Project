@@ -1,6 +1,7 @@
 import { createContext, useEffect, useRef } from 'react';
 import { useState } from 'react';
 import axios from 'axios';
+// eslint-disable-next-line react-refresh/only-export-components
 export const AppContext = createContext();
 import {toast} from 'react-toastify';
 import { io } from 'socket.io-client';
