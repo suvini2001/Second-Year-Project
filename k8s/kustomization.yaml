@@ -11,3 +11,4 @@ resources:
   - 50-n8n.yaml
   - 60-mcp-server.yaml
   - 70-ingress.yaml
+  - 80-redis.yaml
