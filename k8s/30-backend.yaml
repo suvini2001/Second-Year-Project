@@ -60,6 +60,10 @@ kind: Service
 metadata:
   name: backend
   namespace: docop
+  annotations:
+    traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.name: docop_backend
+    traefik.ingress.kubernetes.io/service.sticky.cookie.httponly: "true"
 spec:
   selector:
     app: backend
