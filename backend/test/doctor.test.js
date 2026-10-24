@@ -17,39 +17,54 @@ jest.unstable_mockModule('../config/cloudnary.js', () => ({
   default: jest.fn(() => undefined),
 }));
 
+const doctorModelMock = {
+  findOne: jest.fn(),
+  find: jest.fn(),
+  findById: jest.fn(),
+  findByIdAndUpdate: jest.fn(),
+};
+
+const appointmentModelMock = {
+  find: jest.fn(),
+  findById: jest.fn(),
+  findByIdAndUpdate: jest.fn(),
+};
+
+const messageModelMock = {
+  countDocuments: jest.fn(),
+  findOne: jest.fn(),
+  find: jest.fn(),
+  updateMany: jest.fn(),
+};
+
+const bcryptMock = {
+  compare: jest.fn(),
+};
+
+const jwtMock = {
+  sign: jest.fn(),
+  verify: jest.fn(),
+};
+
 // Mock Doctor model (subset of methods used)
 jest.unstable_mockModule('../models/doctorModel.js', () => ({
-  default: {
-    findOne: jest.fn(),
-    find: jest.fn(),
-    findById: jest.fn(),
-    findByIdAndUpdate: jest.fn(),
-  }
+  default: doctorModelMock,
 }));
 // Mock Appointment model
 jest.unstable_mockModule('../models/appointmentModel.js', () => ({
-  default: {
-    find: jest.fn(),
-    findById: jest.fn(),
-    findByIdAndUpdate: jest.fn(),
-  }
+  default: appointmentModelMock,
 }));
 // Mock Message model
 jest.unstable_mockModule('../models/messageModel.js', () => ({
-  default: {
-    countDocuments: jest.fn(),
-    findOne: jest.fn(),
-    find: jest.fn(),
-    updateMany: jest.fn(),
-  }
+  default: messageModelMock,
 }));
 
 // Mock third‑party libs
 jest.unstable_mockModule('bcrypt', () => ({
-  default: { compare: jest.fn() }
+  default: bcryptMock,
 }));
 jest.unstable_mockModule('jsonwebtoken', () => ({
-  default: { sign: jest.fn(), verify: jest.fn() }
+  default: jwtMock,
 }));
 jest.unstable_mockModule('cloudinary', () => ({
   v2: { uploader: { upload: jest.fn().mockResolvedValue({ secure_url: 'https://cloud/img.png' }) }, url: jest.fn().mockReturnValue('https://cloud/url') }

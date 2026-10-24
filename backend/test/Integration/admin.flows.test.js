@@ -79,6 +79,25 @@ jest.unstable_mockModule('../../models/userModel.js', createUserModelMock);
 jest.unstable_mockModule('../../models/doctorModel.js', createDoctorModelMock);
 jest.unstable_mockModule('../../models/appointmentModel.js', createAppointmentModelMock);
 jest.unstable_mockModule('../../models/messageModel.js', createMessageModelMock);
+jest.unstable_mockModule('../../models/pendingBookingModel.js', () => ({
+  default: {
+    find: jest.fn(),
+    findById: jest.fn(),
+    findOne: jest.fn(),
+    create: jest.fn(),
+    deleteOne: jest.fn(),
+    deleteMany: jest.fn(),
+    createIndexes: jest.fn().mockResolvedValue({}),
+  }
+}));
+jest.unstable_mockModule('../../models/processedEventModel.js', () => ({
+  default: {
+    findOne: jest.fn(),
+    create: jest.fn(),
+    updateOne: jest.fn(),
+    createIndexes: jest.fn().mockResolvedValue({}),
+  }
+}));
 
 jest.unstable_mockModule('../../services/emailService.js', () => ({ 
   sendEmail: jest.fn().mockResolvedValue({}) 
