@@ -1,3 +1,5 @@
+![CI](https://github.com/suvini2001/Second-Year-Project/actions/workflows/ci.yml/badge.svg?branch=kubernetes)
+
 # 2YP Medical Appointment System
 
 <!-- Deployment badges -->
