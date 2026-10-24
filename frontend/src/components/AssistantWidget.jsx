@@ -29,7 +29,8 @@ export default function AssistantWidget() {
                 { message: text, sessionId: sessionId.current }, { headers: { token } });
             setMessages((m) => [...m, { from: "bot", text: data.success ? data.reply : data.message }]);
             setPending(data.pendingBooking || null);
-        } catch {
+        } catch (error) {
+            console.error("Assistant chat error:", error);
             setMessages((m) => [...m, { from: "bot", text: "Something went wrong. Please try again." }]);
         } finally {
             setBusy(false);

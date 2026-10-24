@@ -5,11 +5,11 @@ import { assets } from '../assets/assets_frontend/assets'
 import axios from "axios";
 import { toast } from "react-toastify";
 const MyProfile = () => {
-  const { isEditing, setIsEditing } = useContext(AppContext);
+  const { isEditing, setIsEditing, userData, setUserData, token, backendUrl, loadUserProfileData } = useContext(AppContext);
   const [image, setImage] = useState(false);
 
   const updateUserProfileData = async () => {
-    try{
+    try {
       const formData = new FormData();
       formData.append("name", userData.name);
       formData.append("phone", userData.phone);
@@ -17,28 +17,21 @@ const MyProfile = () => {
       formData.append("gender", userData.gender);
       formData.append("dob", userData.dob);
 
-      image && formData.append("image", image);
-      const {data} = await axios.post(backendUrl + '/api/user/update-profile', formData, {headers:{token}});
-      if(data.success){
+      if (image) formData.append("image", image);
+      const { data } = await axios.post(backendUrl + '/api/user/update-profile', formData, { headers: { token } });
+      if (data.success) {
         toast.success(data.message);
         await loadUserProfileData();
         setIsEditing(false);
         setImage(false);
-      }
-      else{
+      } else {
         toast.error(data.message);
       }
-
-    }
-    catch(error){
-      console.log(error);
+    } catch (error) {
+      console.error(error);
       toast.error(error.message);
     }
-   
   };
-
-  const { userData, setUserData, token, backendUrl, loadUserProfileData } =
-    useContext(AppContext);
   if (!userData) {
     return (
       <div className="min-h-screen flex items-center justify-center text-xl">

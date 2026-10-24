@@ -1,14 +1,10 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DoctorContext } from "../../contexts/doctorContext";
 import { AppContext } from "../../contexts/appContext";
 import { FiList, FiXCircle, FiCheckCircle, FiMessageSquare } from "react-icons/fi";
-import ChatBox from "../../components/ChatBox";
-
-
 const DoctorAppointments = () => {
 
-  const [openChatId, setOpenChatId] = useState(null);
   const navigate = useNavigate();
   const {
     dToken,
@@ -166,18 +162,6 @@ const DoctorAppointments = () => {
                     >
                       <FiCheckCircle size={18} />
                     </button>
-                  </div>
-                )}
-
-                {/* Add after Complete/Cancel buttons */}
-
-                {/* Render ChatBox below appointment card */}
-                {openChatId === item._id && (
-                  <div className="mt-4">
-                    <ChatBox
-                      appointmentId={item._id}
-                      patientName={item.userData.name}
-                    />
                   </div>
                 )}
               </div>

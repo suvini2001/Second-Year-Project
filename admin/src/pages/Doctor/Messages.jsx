@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef, useState, useMemo } from "react"; //standard React hooks for managing component state, lifecycle, and accessing context.
+import React, { useContext, useEffect, useState, useMemo } from "react"; //standard React hooks for managing component state, lifecycle, and accessing context.
 import { DoctorContext } from "../../contexts/doctorContext"; // use doctor context to access ddToken and backendUrl
 import axios from "axios"; //for making HTTP API requests to the backend.
 import { useNavigate } from "react-router-dom"; //for programmatic navigation between routes.

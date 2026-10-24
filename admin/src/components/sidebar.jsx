@@ -5,7 +5,7 @@ import { NavLink } from "react-router-dom";
 import { DoctorContext } from "../contexts/doctorContext";
 
 
-const sidebar = () => {
+const Sidebar = () => {
   const { aToken } = useContext(AdminContext);
   const { dToken } = useContext(DoctorContext);
 
@@ -92,4 +92,4 @@ const sidebar = () => {
   );
 };
 
-export default sidebar;
+export default Sidebar;
