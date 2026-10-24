@@ -22,7 +22,7 @@ spec:
       containers:
         - name: backend
           image: ghcr.io/suvini2001/docop-backend:dev
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Never
           ports:
             - name: http
               containerPort: 8000

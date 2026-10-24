@@ -1,4 +1,3 @@
-# Added in Step 7. Also add "- 80-redis.yaml" to kustomization.yaml and REDIS_URL to 10-config.yaml.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
