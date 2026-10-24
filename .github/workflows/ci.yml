@@ -43,7 +43,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       # The suites that pass reliably today. Add the others once they are fixed (see the plan, Step 8).
-      - run: npm test -- --ci test/assistant test/internal test/mcp test/health test/middleware test/Controllers test/services
+      - run: npm test -- --ci
 
   test-mcp-server:
     name: MCP server checks
