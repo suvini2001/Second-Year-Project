@@ -1,0 +1,17 @@
+- op: replace
+  path: /spec/rules/0/host
+  value: k8s.docop.me
+- op: replace
+  path: /spec/rules/1/host
+  value: n8n.k8s.docop.me
+# cert-manager sees this annotation and gets one certificate for both names into the Secret docop-tls
+- op: add
+  path: /metadata/annotations
+  value:
+    cert-manager.io/cluster-issuer: letsencrypt
+    traefik.ingress.kubernetes.io/router.middlewares: docop-redirect-https@kubernetescrd
+- op: add
+  path: /spec/tls
+  value:
+    - hosts: [k8s.docop.me, n8n.k8s.docop.me]
+      secretName: docop-tls

@@ -47,10 +47,12 @@ beforeAll(async () => {
         appt(perera, '11:00 AM', { cancelled: true }),
         appt(silva, '10:30 AM', { isCompleted: true }),
     ]);
-}, 60000);
+}, 180000);
 
 afterAll(async () => {
-    await mongoose.disconnect();
+    try {
+        await mongoose.disconnect();
+    } catch (_) {}
     await mongo?.stop();
 });
 

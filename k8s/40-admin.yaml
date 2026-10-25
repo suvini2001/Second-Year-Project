@@ -23,9 +23,13 @@ spec:
           ports:
             - name: http
               containerPort: 80
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sleep", "3"]
           readinessProbe:
             httpGet: { path: /, port: http }
-            periodSeconds: 10
+            periodSeconds: 2
           livenessProbe:
             httpGet: { path: /, port: http }
             periodSeconds: 30

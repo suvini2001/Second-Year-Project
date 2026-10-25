@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: docop-config
+  namespace: docop
+data:
+  CORS_ORIGINS: "https://k8s.docop.me"
+  FRONTEND_URL: "https://k8s.docop.me"

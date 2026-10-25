@@ -1,0 +1,16 @@
+# Env entries are merged by name, so only these four change.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+  namespace: docop
+spec:
+  template:
+    spec:
+      containers:
+        - name: n8n
+          env:
+            - { name: N8N_HOST, value: n8n.k8s.docop.me }
+            - { name: N8N_PROTOCOL, value: https }
+            - { name: WEBHOOK_URL, value: "https://n8n.k8s.docop.me/" }
+            - { name: N8N_SECURE_COOKIE, value: "true" }   # HTTPS now, so the login cookie can be Secure

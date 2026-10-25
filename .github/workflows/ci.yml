@@ -42,7 +42,7 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
-      # The suites that pass reliably today. Add the others once they are fixed (see the plan, Step 8).
+      # The whole suite. mcp.test.js and messages.pagination.test.js download a MongoDB binary once.
       - run: npm test -- --ci
 
   test-mcp-server:
@@ -83,19 +83,17 @@ jobs:
       matrix:
         include:
           - app: backend
-            build_args: ""
+            base_path: /
           - app: mcp-server
-            build_args: ""
+            base_path: /
           - app: frontend
-            build_args: |
-              VITE_BACKEND_URL=http://docop.localhost
-              VITE_BASE_PATH=/
+            base_path: /
           - app: admin
-            build_args: |
-              VITE_BACKEND_URL=http://docop.localhost
-              VITE_BASE_PATH=/admin/
+            base_path: /admin/
     steps:
       - uses: actions/checkout@v4
+      # QEMU lets the x86 runner also build ARM images (Oracle Cloud's free VMs are ARM)
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -113,7 +111,13 @@ jobs:
         with:
           context: ${{ matrix.app }}
           push: true
-          build-args: ${{ matrix.build_args }}
+          platforms: linux/amd64,linux/arm64
+          # Vite bakes the API address into the build. Set the repository variable PUBLIC_URL
+          # (Settings -> Secrets and variables -> Actions -> Variables) to your cloud address.
+          # Without it the images are built for the local cluster. backend and mcp-server ignore these.
+          build-args: |
+            VITE_BACKEND_URL=${{ vars.PUBLIC_URL || 'http://docop.localhost' }}
+            VITE_BASE_PATH=${{ matrix.base_path }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.app }}
