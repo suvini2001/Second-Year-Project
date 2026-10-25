@@ -1,9 +1,8 @@
-![CI](https://github.com/suvini2001/Second-Year-Project/actions/workflows/ci.yml/badge.svg?branch=kubernetes)
-
 # 2YP Medical Appointment System
 
 <!-- Deployment badges -->
 [![User site status](https://img.shields.io/website?label=docop.me&url=https%3A%2F%2Fdocop.me)](https://docop.me) [![Admin site status](https://img.shields.io/website?label=admin&url=https%3A%2F%2Fsecond-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app)](https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/) [![Backend status](https://img.shields.io/website?label=docop-backend&url=https%3A%2F%2Fdocop-backend.onrender.com)](https://docop-backend.onrender.com)
+[![CI](https://github.com/suvini2001/Second-Year-Project/actions/workflows/ci.yml/badge.svg?branch=kubernetes)](https://github.com/suvini2001/Second-Year-Project/actions/workflows/ci.yml)
 
 This repository contains a full-stack web application for managing medical appointments, with separate admin, doctor, and user interfaces. The system is divided into three main parts:
 
@@ -13,6 +12,10 @@ This repository contains a full-stack web application for managing medical appoi
 - **mcp-server/**: Model Context Protocol server that exposes DocOp data to AI clients as read-only tools.
 - **automation workflows/**: exported n8n workflows (emails, reminders, reports, AI assistant, admin MCP tools).
 - **nginx/**: reverse proxy for n8n and the MCP endpoints.
+- **k8s/**: Kubernetes manifests for the local cluster (`kubectl apply -k k8s/`).
+- **k8s-cloud/**: Kustomize overlay for the cloud server: public addresses, HTTPS, images from GHCR.
+- **.github/workflows/**: CI that lints, tests, validates the manifests and publishes the images.
+- **scripts/**: `deploy-cloud.sh`, run on the server for each new version.
 
 ## Project phases
 
@@ -25,6 +28,7 @@ The project was upgraded in phases, each on its own branch and tag:
 | 2 | `automation` | `phase-2-automation` | n8n automation: signed events, emails, reminders, health monitor, weekly report | [AUTOMATION.md](./AUTOMATION.md) |
 | 3 | `AI-Chat-bot` | `phase-3-ai-assistant` | AI booking assistant (n8n agent + Gemini) with human-confirmed bookings | [ASSISTANT.md](./ASSISTANT.md) |
 | 4 | `MCP` | `phase-4-mcp` | MCP in both directions: DocOp MCP server, n8n as MCP client and server, Claude Desktop demo, nginx | [MCP.md](./MCP.md) |
+| 5 | `kubernetes` | `phase-5-kubernetes` | Kubernetes: replicas, probes, Postgres StatefulSet, Traefik Ingress, Redis-backed Socket.IO, CI to GHCR, cloud deploy with HTTPS | [K8S.md](./K8S.md) |
 
 ---
 
@@ -105,7 +109,11 @@ Frontend notes
 ├── mcp-server/            # MCP server: DocOp data as read-only AI tools
 ├── automation workflows/  # Exported n8n workflows + end-to-end test script
 ├── nginx/                 # Reverse proxy config (MCP-safe, no buffering)
-├── docs/                  # Phase 0 security notes
+├── k8s/                   # Kubernetes manifests for local cluster (kubectl apply -k k8s/)
+├── k8s-cloud/             # Kustomize overlay for cloud server (HTTPS, GHCR)
+├── .github/workflows/     # CI that lints, tests, validates manifests, builds & pushes images
+├── scripts/               # deploy-cloud.sh, run on the server for each new version
+├── docs/                  # Phase 0 security notes & phase documentation
 └── docker-compose.yml     # The whole stack
 ```
 
