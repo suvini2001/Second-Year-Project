@@ -4,18 +4,28 @@ DocOp is a full-stack medical appointment platform with separate patient and adm
 
 > This guide describes the configuration present in the `kubernetes` branch. Credentials, external services, DNS, certificates, and cluster prerequisites must be configured separately.
 
+## Live Deployments (Azure)
+
+The platform is deployed live on Microsoft Azure (Kubernetes):
+
+| Service | Live URL | Description |
+|---|---|---|
+| **Patient Frontend** | [https://k8s.docop.me](https://k8s.docop.me) | Patient-facing web application |
+| **Admin Panel** | [https://k8s.docop.me/admin/](https://k8s.docop.me/admin/) | Administrative management dashboard |
+| **n8n Automation** | [https://n8n.k8s.docop.me](https://n8n.k8s.docop.me) | Workflow automation dashboard |
+
 ## Components
 
-| Component | Responsibility | Local Compose access |
-|---|---|---|
-| `frontend/` | Patient-facing React application | http://localhost:5173 |
-| `admin/` | React administration application | http://localhost:5174 |
-| `backend/` | Express API, business logic, authentication, MongoDB access and Socket.IO | http://localhost:8000 |
-| n8n | Event-driven and scheduled automation | http://localhost:5678 |
-| PostgreSQL | n8n's database | Internal port 5432 |
-| Redis | Socket.IO pub/sub in Kubernetes | Internal port 6379 |
-| `mcp-server/` | Restricted MCP tools backed by the DocOp API | Port 3001; local-only in Compose |
-| MongoDB | Application database configured for the backend | Configured externally |
+| Component | Responsibility | Local Compose access | Live Deployment (Azure) |
+|---|---|---|---|
+| `frontend/` | Patient-facing React application | http://localhost:5173 | [https://k8s.docop.me](https://k8s.docop.me) |
+| `admin/` | React administration application | http://localhost:5174 | [https://k8s.docop.me/admin/](https://k8s.docop.me/admin/) |
+| `backend/` | Express API, business logic, authentication, MongoDB access and Socket.IO | http://localhost:8000 | Ingress via `/api` |
+| n8n | Event-driven and scheduled automation | http://localhost:5678 | [https://n8n.k8s.docop.me](https://n8n.k8s.docop.me) |
+| PostgreSQL | n8n's database | Internal port 5432 | Internal |
+| Redis | Socket.IO pub/sub in Kubernetes | Internal port 6379 | Internal |
+| `mcp-server/` | Restricted MCP tools backed by the DocOp API | Port 3001; local-only in Compose | Internal (ClusterIP) |
+| MongoDB | Application database configured for the backend | Configured externally | External database |
 
 ## Architecture
 

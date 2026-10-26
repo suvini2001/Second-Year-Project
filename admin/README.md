@@ -2,6 +2,8 @@
 
 The admin application is a separate React/Vite web client for DocOp administrative workflows. It communicates with the shared backend API and is deployed separately from the patient frontend.
 
+**Live Deployment (Azure):** [https://k8s.docop.me/admin/](https://k8s.docop.me/admin/)
+
 ## Responsibilities
 - Render the administration interface.
 - Navigate admin views with React Router.

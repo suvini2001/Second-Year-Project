@@ -2,6 +2,8 @@
 
 The patient-facing DocOp web application is built with React and Vite. It communicates with the backend API over HTTP and uses Socket.IO client support for real-time features.
 
+**Live Deployment (Azure):** [https://k8s.docop.me](https://k8s.docop.me)
+
 ## Responsibilities
 - Render the patient-facing interface.
 - Navigate screens with React Router.
