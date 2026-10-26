@@ -41,11 +41,6 @@ Direct public links to the live containerized Kubernetes cluster:
 - **Admin Panel (Doctor Site):** [http://k8s.docop.me/admin](http://k8s.docop.me/admin)
 - **n8n Automation:** [http://n8n.k8s.docop.me](http://n8n.k8s.docop.me)
 
-### 🚀 Serverless / Cloud Hosting (Vercel & Render)
-- **Frontend (Patient Site):** [https://docop.me](https://docop.me) (deployed on Vercel)
-- **Admin Panel (Doctor Site):** [https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/](https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/) (deployed on Vercel)
-- **Backend API:** [https://docop-backend.onrender.com](https://docop-backend.onrender.com) (deployed on Render)
-
 This repository contains a complete, fully-deployed project. ✅
 
 ## How to visit the live sites
