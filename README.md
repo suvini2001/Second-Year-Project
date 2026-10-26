@@ -57,11 +57,6 @@ Quick clickable links to the live deployments:
 - **Admin & Doctor Portal:** [http://k8s.docop.me/admin](http://k8s.docop.me/admin) — portal for doctors and administrators to manage appointments and schedules.
 - **n8n Automation Engine:** [http://n8n.k8s.docop.me](http://n8n.k8s.docop.me) — automated workflow engine handling event notifications, appointment reminders, and AI booking assistant.
 
-### 2. Alternative Deployments (Vercel & Render)
-- **Patient Site:** [https://docop.me](https://docop.me)
-- **Admin / Doctor Portal:** [https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/](https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/)
-- **Backend API:** [https://docop-backend.onrender.com](https://docop-backend.onrender.com)
-
 Helpful notes:
 
 - Recommended browsers: Chrome, Edge, Firefox (desktop and modern mobile browsers are supported).
