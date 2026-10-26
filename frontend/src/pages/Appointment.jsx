@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useCallback } from "react";
 import { useParams} from "react-router-dom";
 import { AppContext } from "../context/AppContext";
 import { assets } from "../assets/assets_frontend/assets";
@@ -8,11 +8,12 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { FaUserMd, FaGraduationCap, FaBriefcaseMedical, FaInfoCircle, FaDollarSign } from 'react-icons/fa'
 
+const daysOfWeek = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
 const Appointment = () => {
   const { docId } = useParams();
   const { doctors, currencySymbol, backendUrl, token, getDoctorsData } =
     useContext(AppContext);
-  const daysOfWeek = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
   const navigate = useNavigate();
 
   const [doctorInfo, setDoctorInfo] = useState(null);
@@ -27,7 +28,7 @@ const Appointment = () => {
     }
   }, [doctors, docId]);
 
-  const getAvailableSlots = () => {
+  const getAvailableSlots = useCallback(() => {
     if (!doctorInfo) return; // Prevent error if doctorInfo is null
     const slots = [];
     let today = new Date();
@@ -80,7 +81,11 @@ const Appointment = () => {
       });
     }
     setDoctorsSlots(slots);
-  };
+  }, [doctorInfo]);
+
+  useEffect(() => {
+    getAvailableSlots();
+  }, [getAvailableSlots]);
 
   // BOOK APPOINTMENT HANDLER
 
@@ -132,15 +137,7 @@ const Appointment = () => {
 
 
 
-  // Removed undefined fetchDoctorsInfo useEffect
 
-  useEffect(() => {
-    getAvailableSlots();
-  }, [doctorInfo]);
-
-  useEffect(() => {
-    console.log(doctorsSlots);
-  }, [doctorsSlots]);
 
   if (!doctorInfo) {
     return (

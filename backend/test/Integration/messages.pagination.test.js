@@ -84,11 +84,11 @@ describe('Message Pagination Integration Test', () => {
             });
         }
         await Message.insertMany(messages);
-    });
+    }, 120000);
 
     afterAll(async () => {
         await mongoose.disconnect();
-        await mongoServer.stop();
+        await mongoServer?.stop();
     });
 
     test('should fetch the first page of messages with default limit', async () => {

@@ -1,7 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { DoctorContext } from '../../contexts/doctorContext'
 import { AppContext } from '../../contexts/appContext'
-import { assets } from '../../assets/assets'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import { FiAward, FiBriefcase, FiMapPin, FiEdit2, FiSave } from 'react-icons/fi'

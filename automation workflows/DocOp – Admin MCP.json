@@ -1,0 +1,192 @@
+{
+  "name": "DocOp – Admin MCP",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "bearerAuth",
+        "path": "docop-admin",
+        "instructions": "DocOp clinic admin tools (Sri Lanka time, UTC+05:30). Dates are always YYYY-MM-DD. Use doctor_day_report to answer questions about one doctor's appointments on one day. Only use send_doctor_summary when the user asks to send or email the summary, after you have shown them the report. If a tool returns ok:false with matches, ask the user which doctor they mean instead of guessing."
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        -32
+      ],
+      "id": "298ac916-f4a6-4702-8c64-c50408483add",
+      "name": "MCP Server Trigger",
+      "webhookId": "892c7d42-28cb-42cd-ae64-b72917d409f2",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "DfSw9sTTqgx9dEMI",
+          "name": "DocOp n8n MCP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Look up how many appointments one doctor has on one day, with times, patient first names and payment status. Read-only: it never sends anything. Use a date in YYYY-MM-DD (Sri Lanka time). If several doctors match, ask the user which one.",
+        "workflowId": {
+          "__rl": true,
+          "value": "HKsEDUVbDpkfDQAa",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/HKsEDUVbDpkfDQAa"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "doctorName": "={{ $fromAI('doctorName', 'Doctor name, for example Perera or Dr. Anjali Perera', 'string') }}",
+            "date": "={{ $fromAI('date', 'The day in YYYY-MM-DD format (Sri Lanka time)', 'string') }}",
+            "action": "preview"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "doctorName",
+              "displayName": "doctorName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "action",
+              "displayName": "action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -336,
+        208
+      ],
+      "id": "ea8ab1a7-c8d5-4506-b2bb-c4964082c71d",
+      "name": "doctor_day_report"
+    },
+    {
+      "parameters": {
+        "description": "Email the doctor a summary of their appointments for one day. The email content is built from DocOp data, not written by you. Only use this when the user asks to send it.",
+        "workflowId": {
+          "__rl": true,
+          "value": "HKsEDUVbDpkfDQAa",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/HKsEDUVbDpkfDQAa"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "doctorName": "={{ $fromAI('doctorName', 'Doctor name, for example Perera or Dr. Anjali Perera', 'string') }}",
+            "date": "={{ $fromAI('date', 'The day in YYYY-MM-DD format (Sri Lanka time)', 'string') }}",
+            "action": "send"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "doctorName",
+              "displayName": "doctorName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "action",
+              "displayName": "action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -16,
+        208
+      ],
+      "id": "5ef589f2-949f-42d9-b63b-c6e5af1b073f",
+      "name": "send_doctor_summary"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "doctor_day_report": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_doctor_summary": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "es79rPnw4s2ZbNQr",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "40862d6e-c9c7-4c1a-8540-2afa614c46f8",
+  "meta": {
+    "instanceId": "5a5b8ac8389feddc977e5c16a7913b4b6f5e535dd242b33601799202229fac62"
+  },
+  "nodeGroups": [],
+  "id": "2lt1WzcQwaiLk70d",
+  "tags": []
+}

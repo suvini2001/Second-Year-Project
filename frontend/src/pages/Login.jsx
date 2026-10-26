@@ -15,6 +15,12 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState(localStorage.getItem('token') ? localStorage.getItem('token') : false);
 
+  useEffect(() => {
+    if (token) {
+      navigate('/');
+    }
+  }, [token, navigate]);
+
   const onSubmitHandler = async (event) => {
     event.preventDefault();
 
@@ -46,14 +52,6 @@ const Login = () => {
 
     // Handle form submission
   };
-
-
-  useEffect(() => {
-   
-    if (token) {
-      navigate('/');
-    }
-  }, [token]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

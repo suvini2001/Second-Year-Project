@@ -16,6 +16,9 @@ import appointmentModel from "./models/appointmentModel.js";
 import processedEventModel from "./models/processedEventModel.js";
 import pendingBookingModel from "./models/pendingBookingModel.js";
 import mongoose from "mongoose";
+import mcpRouter from "./routes/mcpRoute.js";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { createClient } from "redis";
 
 // dotenv already loaded above via ESM import
 
@@ -45,6 +48,19 @@ const io = new Server(server, {
 
 // Expose io for controllers that need to emit outside socket handlers (e.g., after REST reads)
 global.io = io;
+
+// With several backend replicas, rooms must be shared between pods.
+// The Redis adapter publishes every io.to(room).emit(...) through Redis, so all pods deliver it.
+// Without REDIS_URL (Docker Compose, tests) the app works exactly as before, with one process.
+if (process.env.REDIS_URL) {
+  const pubClient = createClient({ url: process.env.REDIS_URL });
+  const subClient = pubClient.duplicate();
+  pubClient.on("error", (err) => console.error("[redis]", err.message));
+  subClient.on("error", (err) => console.error("[redis]", err.message));
+  await Promise.all([pubClient.connect(), subClient.connect()]);
+  io.adapter(createAdapter(pubClient, subClient));
+  console.log("[socket.io] Redis adapter enabled");
+}
 
 // Socket.IO authentication middleware
 
@@ -432,6 +448,10 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// Liveness: "is the process alive?" Never checks MongoDB.
+// Kubernetes restarts a pod when this fails; /api/health (readiness) only takes it out of traffic.
+app.get("/api/live", (req, res) => res.json({ status: "alive" }));
+
 // Docker's HEALTHCHECK, Kubernetes liveness and readiness probes, uptime monitors, and n8n all need one URL that answers "is this service working?".
 // Kubernetes uses the answer to stop sending traffic to a broken pod and to restart it.
 
@@ -450,7 +470,7 @@ app.use("/api/doctor", doctorRouter);
 app.use("/api/user", userRouter);
 app.use("/api/internal", internalRouter);
 app.use("/api/internal/assistant", assistantInternalRouter);
-
+app.use("/api/mcp", mcpRouter); // Phase 4: read-only data for the MCP server
 //api endpoints
 
 app.get("/", (req, res) => {

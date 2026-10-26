@@ -58,7 +58,9 @@ const ChatBox = ({ appointmentId, patientName }) => {
       socketRef.current.io?.on('error', () => setConnectionStatus('disconnected'));
       socketRef.current.io?.on('reconnect', () => setConnectionStatus('connected'));
       socketRef.current.on('connect_error', () => setConnectionStatus('disconnected'));
-    } catch (_) {}
+    } catch (err) {
+      console.error('Socket setup error:', err);
+    }
       
     // Join appointment room  
     socketRef.current.emit('join-appointment', appointmentId);  
@@ -71,7 +73,9 @@ const ChatBox = ({ appointmentId, patientName }) => {
         if (message?.senderType && message.senderType !== 'doctor') {
           socketRef.current.emit('messages-read', { appointmentId });
         }
-      } catch (_) {}
+      } catch (err) {
+        console.error('Mark read on receive error:', err);
+      }
 
       // Auto-scroll only for live messages if near bottom or if outgoing (doctor)
       try {
@@ -88,7 +92,9 @@ const ChatBox = ({ appointmentId, patientName }) => {
             setShowNewBadge(true);
           }
         }
-      } catch (_) {}
+      } catch (err) {
+        console.error('Scroll on receive error:', err);
+      }
     });  
     // Listen for read-receipts to flip ticks on outgoing (doctor) messages
     socketRef.current.on('messages-read', (evt) => {
@@ -102,7 +108,9 @@ const ChatBox = ({ appointmentId, patientName }) => {
               : m
           ));
         }
-      } catch (_) {}
+      } catch (err) {
+        console.error('Read receipt handling error:', err);
+      }
     });
       
     // Load recent messages (paginated)
@@ -112,7 +120,11 @@ const ChatBox = ({ appointmentId, patientName }) => {
     socketRef.current.emit('messages-read', { appointmentId });
 
     const onFocus = () => {
-      try { socketRef.current?.emit('messages-read', { appointmentId }); } catch (_) {}
+      try {
+        socketRef.current?.emit('messages-read', { appointmentId });
+      } catch (err) {
+        console.error('Focus read emit error:', err);
+      }
     };
     window.addEventListener('focus', onFocus);
       
@@ -139,7 +151,9 @@ const ChatBox = ({ appointmentId, patientName }) => {
         requestAnimationFrame(() => {
           try {
             if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-          } catch (_) {}
+          } catch (err) {
+            console.error('Initial scroll error:', err);
+          }
         });
       }
     } catch (error) {
@@ -181,7 +195,9 @@ const ChatBox = ({ appointmentId, patientName }) => {
           try {
             const now = listRef.current?.scrollHeight || 0;
             if (listRef.current) listRef.current.scrollTop = now - prevHeight;
-          } catch (_) {}
+          } catch (err) {
+            console.error('Pagination scroll adjustment error:', err);
+          }
         });
       }
     } catch (error) {
@@ -214,7 +230,9 @@ const ChatBox = ({ appointmentId, patientName }) => {
           listRef.current.scrollTop = listRef.current.scrollHeight;
         }
       });
-    } catch (_) {}
+    } catch (err) {
+      console.error('Scroll after send error:', err);
+    }
 
     socketRef.current.emit(  //a websocket emit with acknowledgement callback //emit-->sends an event through that socket.
       'send-message',
@@ -279,7 +297,13 @@ const ChatBox = ({ appointmentId, patientName }) => {
         localStatus: 'sending'
       };
       setMessages(prev => [...prev, optimistic]);
-      requestAnimationFrame(() => { try { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; } catch (_) {} });
+      requestAnimationFrame(() => {
+        try {
+          if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+        } catch (err) {
+          console.error('Scroll after file send error:', err);
+        }
+      });
       socketRef.current.emit('send-message', {
         appointmentId,
         clientMessageId,
@@ -475,7 +499,16 @@ const ChatBox = ({ appointmentId, patientName }) => {
           <div className="text-center text-sm text-gray-500 py-4">No messages match "{searchQuery}".</div>
         )}
         {showNewBadge && (
-          <button onClick={() => { try { if (listRef.current) { listRef.current.scrollTop = listRef.current.scrollHeight; setShowNewBadge(false); } } catch (_) {} }} className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs px-3 py-1 rounded-full shadow">
+          <button onClick={() => {
+            try {
+              if (listRef.current) {
+                listRef.current.scrollTop = listRef.current.scrollHeight;
+                setShowNewBadge(false);
+              }
+            } catch (err) {
+              console.error('Scroll to bottom error:', err);
+            }
+          }} className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs px-3 py-1 rounded-full shadow">
             New messages
           </button>
         )}

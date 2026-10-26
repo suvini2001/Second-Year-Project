@@ -87,7 +87,9 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
       socketRef.current.io?.on('error', () => setConnectionStatus('disconnected'));
       socketRef.current.io?.on('reconnect', () => setConnectionStatus('connected'));
       socketRef.current.on('connect_error', () => setConnectionStatus('disconnected'));
-    } catch (_) {}
+    } catch (err) {
+      console.error('Socket setup error:', err);
+    }
 
     // 2️⃣ Join a specific chat room related to this appointment
     socketRef.current.emit('join-appointment', appointmentId);
@@ -101,7 +103,9 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
         if (message?.senderType && message.senderType !== 'user') {
           socketRef.current.emit('messages-read', { appointmentId });
         }
-      } catch (_) {}
+      } catch (err) {
+        console.error('Mark read on receive error:', err);
+      }
 
       // Auto-scroll only for new live messages if we're near the bottom
       try {
@@ -117,7 +121,9 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
             setShowNewBadge(true);
           }
         }
-      } catch (_) {}
+      } catch (err) {
+        console.error('Scroll error:', err);
+      }
     });
 
     // Listen for read receipts to flip ticks on outgoing (user) messages
@@ -132,7 +138,9 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
               : m
           ));
         }
-      } catch (_) {}
+      } catch (err) {
+        console.error('Read receipt handling error:', err);
+      }
     });
 
     // 4️⃣ Load recent messages (paginated)
@@ -143,7 +151,11 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
 
     //his ensures that if the user switches to another tab and comes back, unread messages are marked read immediately.
     const onFocus = () => {
-      try { socketRef.current?.emit('messages-read', { appointmentId }); } catch (_) {}
+      try {
+        socketRef.current?.emit('messages-read', { appointmentId });
+      } catch (err) {
+        console.error('Focus mark-read error:', err);
+      }
     };
     window.addEventListener('focus', onFocus);  //Then we attach this function to the focus event of the window, so it triggers automatically when the user returns to the tab.
 
@@ -177,7 +189,9 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
           try {
             const el = listRef.current;
             if (el) el.scrollTop = el.scrollHeight;
-          } catch (_) {}
+          } catch (err) {
+            console.error('Initial scroll error:', err);
+          }
         });
       }
     } catch (error) {
@@ -237,7 +251,9 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
           try {
             const now = listRef.current?.scrollHeight || 0;
             if (listRef.current) listRef.current.scrollTop = now - prevHeight;
-          } catch (_) {}
+          } catch (err) {
+            console.error('Pagination scroll adjustment error:', err);
+          }
         });
       }
     } catch (error) {
@@ -397,7 +413,9 @@ const upsertMessage = useCallback((list, incoming) => { // the parameters are th
         el.scrollTop = el.scrollHeight;
         setShowNewBadge(false);
       }
-    } catch (_) {}
+    } catch (err) {
+      console.error('Scroll to bottom error:', err);
+    }
   };
 
   const retryMessage = (msg) => {

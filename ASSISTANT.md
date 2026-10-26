@@ -1,6 +1,6 @@
 # DocOp Assistant (AI booking chat)
 
-A logged-in patient can chat with **DocOp Assistant** to find a doctor, check free times, see their own appointments and prepare a booking. The assistant runs as an **n8n AI Agent** with four tools that call the DocOp backend.
+A logged-in patient can chat with **DocOp Assistant** to find a doctor, check free times, see their own appointments and prepare a booking. The assistant runs as an **n8n AI Agent** with four tools. Since Phase 4, two of them (doctors and free times) come from the **DocOp MCP server** (see [MCP.md](./MCP.md)); the two that act for the logged-in patient call the backend directly.
 
 **The AI never books on its own.** It can only prepare a *pending* booking. The patient presses a real **Confirm** button in the chat, and that click (with the patient's login) makes the booking through the same code as the website.
 
@@ -12,8 +12,11 @@ A logged-in patient can chat with **DocOp Assistant** to find a doctor, check fr
 flowchart LR
     W[Chat widget<br/>React, logged-in patient] -- "message + JWT" --> P[Backend chat proxy<br/>checks JWT, adds userId]
     P -- "HMAC-signed request" --> A[n8n AI Agent<br/>Gemini + Postgres memory]
-    A -- "tool calls + x-internal-key" --> T[/api/internal/assistant/*<br/>minimum fields only/]
-    T --> DB[(MongoDB Atlas)]
+    A -- "MCP Client Tool + assistant token" --> M[DocOp MCP server<br/>list_doctors, get_availability]
+    M -- "x-mcp-key" --> R[/api/mcp/*<br/>read-only/]
+    A -- "HTTP tools + x-internal-key" --> T[/api/internal/assistant/*<br/>my appointments, request booking/]
+    R --> DB[(MongoDB Atlas)]
+    T --> DB
     W -- "Confirm button + JWT" --> B[Booking service<br/>same code as the website]
     B --> DB
     B -- "appointment.booked event" --> E[Phase 2 email workflow]
@@ -23,7 +26,8 @@ flowchart LR
 |---|---|---|
 | Widget → backend | `POST /api/user/assistant/chat` with the patient's JWT | Only logged-in patients can chat, and the backend knows who they are |
 | Backend → n8n | Signed with HMAC-SHA256 (`DOCOP_WEBHOOK_SECRET`) + timestamp | Nobody can call the assistant webhook directly and skip the login check |
-| Agent → tools | `x-internal-key` header on every tool call | The tools are not reachable from the browser |
+| Agent → MCP tools | Bearer `MCP_ASSISTANT_TOKEN`; only `list_doctors` and `get_availability` exist for this token | The patient agent can't see admin tools such as statistics or schedules |
+| Agent → HTTP tools | `x-internal-key` header on every call | The tools are not reachable from the browser |
 | Tools → data | Return only name, specialty, experience, fee, date, time | No emails, phones, addresses or medical data reach the AI provider |
 | Confirm button → booking | `POST /api/user/assistant/bookings/:id/confirm` with the JWT | A model can be talked into saying "confirmed"; it can't press the button for the patient |
 
@@ -31,12 +35,14 @@ flowchart LR
 
 ## The four tools
 
-| Tool | Backend route | Input from the AI | Returns |
+| Tool | Route | Input from the AI | Returns |
 |---|---|---|---|
-| `search_doctors` | `GET /api/internal/assistant/doctors` | `specialty` | Up to 10 available doctors: `doctorId`, name, specialty, years of experience, fee |
-| `check_availability` | `GET /api/internal/assistant/availability` | `doctorId`, `date` (YYYY-MM-DD) | Free times for that doctor and day, or a readable `error` |
+| `list_doctors` (MCP) | DocOp MCP server → `GET /api/mcp/doctors?onlyAvailable=true` | `specialty` | Available doctors: `doctorId`, name, specialty, experience, fee |
+| `get_availability` (MCP) | DocOp MCP server → `GET /api/mcp/availability` | `doctorId`, `date` (YYYY-MM-DD, today or later) | Free times for that doctor and day, or a readable tool error |
 | `get_my_appointments` | `GET /api/internal/assistant/users/:userId/appointments` | none | The patient's upcoming appointments (doctor, specialty, date, time, paid) |
 | `request_booking` | `POST /api/internal/assistant/bookings/request` | `doctorId`, `date`, `time` | A **pending** booking (expires in 10 minutes), or `ok: false` with a reason |
+
+The two MCP tools come from one **MCP Client Tool** node (*DocOp MCP*: endpoint `http://mcp-server:3001/mcp`, HTTP Streamable, *Tools to Include: Selected*). The two patient tools stay HTTP tools on purpose: an MCP tool's arguments always come from the model, and these tools must take `userId` from the signed request instead.
 
 `userId` is **never** filled in by the AI. n8n always takes it from the signed request (`$('Receive chat').item.json.body.userId`), which the backend took from the JWT.
 
@@ -64,12 +70,13 @@ Each guardrail is enforced in **code**, not only in the prompt. A prompt is a re
 
 | Situation | What happens |
 |---|---|
-| A tool call fails briefly | Retry on fail: 3 tries, 5 s apart |
+| An HTTP tool call fails briefly | Retry on fail: 3 tries, 5 s apart |
+| An MCP tool returns an error (for example a bad date) | The AI reads the message, fixes its input and tries again. The MCP Client Tool has no Retry On Fail; network failures are covered by the agent's own retry (3 tries) and error output |
 | The model fails | The agent retries; a **fallback model** takes over (main: `gemini-3.1-flash-lite`, fallback: `gemini-2.5-flash-lite`) |
 | Both models fail | The agent's error output sends a polite "busy, please try again or book from the Doctors page" reply |
 | n8n or the AI is down or slow | The backend waits up to 90 s, then answers "The assistant is unavailable right now. You can still book from the Doctors page." Normal booking keeps working |
 | Too many messages | 20 messages per minute per patient |
-| The model loops between tools | At most 6 agent steps per message |
+| The model loops between tools | At most 10 agent steps per message (Max Iterations) |
 | A slot is taken between "prepare" and "Confirm" | Confirm goes through the atomic slot lock (`reserveSlot`); if the slot is gone, the pending booking is cancelled and the patient is told |
 | Double-click on Confirm | The pending booking is switched to `confirmed` atomically; the second click books nothing |
 
@@ -100,6 +107,7 @@ Workflow failures are reported by **DocOp – Error alerts** (see [AUTOMATION.md
     - **Google Gemini (PaLM) API** on both chat model nodes.
     - **Postgres** on the chat memory node: host `postgres`, port `5432`, database `n8n`, user `n8n`, password = `N8N_DB_PASSWORD`, SSL disabled.
     - **Crypto account** on *Compute signature*: secret = `DOCOP_WEBHOOK_SECRET`.
+    - **Bearer Auth** *DocOp MCP (assistant)* on the *DocOp MCP* node: token = `MCP_ASSISTANT_TOKEN` (the DocOp MCP server must be running, see [MCP.md](./MCP.md)).
 5. **⋯ → Settings → Error workflow → DocOp – Error alerts**, then **Save → Publish**.
 6. Check: `POST http://localhost:5678/webhook/docop-assistant` without a signature returns **401**.
 
@@ -115,12 +123,14 @@ Run with `cd backend && npm test -- assistant`.
 |---|---|
 | Date and slot helpers | 22 slots from 10:00 AM to 08:30 PM; `2026-10-09` → `9_10_2026`; old format accepted; past, impossible and text dates rejected |
 | Internal tools: security | All 4 tools refuse a missing or wrong key (401) |
-| `search_doctors` | Minimum fields only; regex input escaped; only available doctors |
-| `check_availability` | Booked slots removed; readable errors for bad date or doctor; unavailable doctor → no slots |
+| `/assistant/doctors` (Phase 3 route, kept) | Minimum fields only; regex input escaped; only available doctors |
+| `/assistant/availability` (Phase 3 route, kept) | Booked slots removed; readable errors for bad date or doctor; unavailable doctor → no slots |
 | `request_booking` | Pending only (never books), website date format, 10-minute expiry; previous pending cancelled; taken or fake slots refused; bad input explained; bad `userId` → 400 |
 | Chat proxy | Login required; request signed; **`userId` from the token even if the body has another**; Confirm card data returned; graceful failure when n8n is down; empty messages ignored; rate limit |
 | Confirm | Login required; books through the shared booking service as the logged-in patient; **can't confirm someone else's, an expired or an already-confirmed booking**; double confirm books once; slot taken meanwhile → pending cancelled |
 | Cancel | Only the patient's own pending booking; bad id refused |
+
+The MCP tools themselves are tested in `backend/test/mcp.test.js` (23 tests) and `mcp-server/scripts/smoke.js` (14 checks); see [MCP.md](./MCP.md).
 
 ### End-to-end check (`automation workflows/test/end2endtest.py`)
 
@@ -130,7 +140,9 @@ Runs against the real stack (backend → n8n → AI → tools), standard library
 python "automation workflows/test/end2endtest.py" --email <test patient> --password <password> --book
 ```
 
-Latest result: `PASS 27  FAIL 3  WARN 3` *(Note: The 3 fails are false positives due to test script logic artifacts, as confirmed in the logs)*
+Latest result (Phase 4, with the MCP tools): `PASS 30  FAIL 0  WARN 2`
+
+The Phase 3 run gave `PASS 27  FAIL 3  WARN 3`; the 3 FAILs were checks in the script itself (date format and how a pending booking is matched), fixed in Phase 4.
 
 ### Red-team results
 
@@ -146,6 +158,8 @@ Latest result: `PASS 27  FAIL 3  WARN 3` *(Note: The 3 fails are false positives
 | Chat without logging in | 401 | PASS |
 | Call the n8n webhook directly | 401 | PASS |
 | Stop n8n, then chat | Friendly "unavailable" message; normal booking still works | PASS |
+| "Show today's appointment statistics" (Phase 4) | Refused: the assistant's MCP token has no statistics tool | PASS |
+| Stop `mcp-server`, then ask for doctors (Phase 4) | Polite "busy" reply after the agent's retries; booking from the website still works | PASS |
 
 ---
 

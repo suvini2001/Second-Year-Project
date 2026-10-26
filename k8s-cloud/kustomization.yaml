@@ -1,0 +1,44 @@
+# Cloud version of the same app: kubectl apply -k k8s-cloud
+# It reuses every file in k8s/ and changes only what differs on a public server:
+# the addresses, HTTPS, and images pulled from GHCR instead of imported by hand.
+#
+# Before applying, replace k8s.docop.me with your own address in:
+#   10-config-patch.yaml, ingress-docop-patch.yaml, ingress-admin-patch.yaml, n8n-patch.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../k8s                      # everything in k8s/
+  - cluster-issuer.yaml         # Let's Encrypt certificates (needs cert-manager installed first)
+  - redirect-https.yaml         # http:// -> https://
+
+# Use the images CI published to GHCR. "kubernetes" is the branch tag (latest build of that branch).
+# For a fixed version, use a sha tag instead, e.g. newTag: sha-e658336
+images:
+  - name: ghcr.io/suvini2001/docop-backend
+    newTag: kubernetes
+  - name: ghcr.io/suvini2001/docop-frontend
+    newTag: kubernetes
+  - name: ghcr.io/suvini2001/docop-admin
+    newTag: kubernetes
+  - name: ghcr.io/suvini2001/docop-mcp-server
+    newTag: kubernetes
+
+patches:
+  - path: 10-config-patch.yaml
+  - path: n8n-patch.yaml
+  # Always ask GHCR for the newest image of the tag (the local files use Never / IfNotPresent)
+  - target:
+      kind: Deployment
+      name: "backend|frontend|admin|mcp-server"
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: Always
+  - target:
+      kind: Ingress
+      name: docop
+    path: ingress-docop-patch.yaml
+  - target:
+      kind: Ingress
+      name: docop-admin
+    path: ingress-admin-patch.yaml

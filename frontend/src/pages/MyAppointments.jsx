@@ -6,11 +6,7 @@ import { toast } from "react-hot-toast";
 import { useEffect } from "react";
 import { Link } from "react-router-dom"; // Add this import
 import { useNavigate } from "react-router-dom";
-import ChatBox from "../components/ChatBox";
-
-
 const MyAppointments = () => {
-  const [openChatAppointmentId, setOpenChatAppointmentId] = useState(null);
 
   const { backendUrl, token, getDoctorsData } = useContext(AppContext);
   const [appointments, setAppointments] = useState([]);
@@ -205,16 +201,6 @@ const MyAppointments = () => {
                       <button className="px-6 py-2 bg-gradient-to-r from-green-700 to-green-900 text-white font-semibold rounded-xl shadow-md cursor-not-allowed opacity-70">
                         Appointment Completed
                       </button>
-                    )}
-
-                    {/* Render ChatBox if this appointment's chat is open */}
-                    {openChatAppointmentId === item._id && (
-                      <div className="mt-4">
-                        <ChatBox
-                          appointmentId={item._id}
-                          doctorName={item.docData.name}
-                        />
-                      </div>
                     )}
                   </div>
                 </div>

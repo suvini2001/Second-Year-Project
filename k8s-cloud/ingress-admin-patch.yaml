@@ -1,0 +1,13 @@
+- op: replace
+  path: /spec/rules/0/host
+  value: k8s.docop.me
+# Redirect to HTTPS first, then strip /admin (the order matters)
+- op: replace
+  path: /metadata/annotations/traefik.ingress.kubernetes.io~1router.middlewares
+  value: docop-redirect-https@kubernetescrd,docop-strip-admin@kubernetescrd
+# Same host, so it reuses the certificate the main Ingress requested (no cert-manager annotation here)
+- op: add
+  path: /spec/tls
+  value:
+    - hosts: [k8s.docop.me]
+      secretName: docop-tls
