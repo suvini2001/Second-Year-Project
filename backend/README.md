@@ -1,86 +1,114 @@
-# Backend Notes: Messaging Hardening, Headers, and Socket.IO Path
+# DocOp Backend
 
-## Message Validation & Limits
-- Max length: 2000 characters (configurable via `MAX_MESSAGE_LENGTH`).
-- Trimming: messages are trimmed server-side; empty after trim is rejected.
-- Moderation: optional basic moderation via `BASIC_MODERATION_ENABLED=true`. Replace with a proper service as needed.
-- Schema guard: `message` field has `trim: true` and `maxlength: 2000` for defense in depth.
+The backend is the Node.js/Express API for DocOp. It owns application logic, authentication/authorization, MongoDB persistence through Mongoose, and the Socket.IO server used by the web applications. It also integrates with configured external services and communicates with n8n through authenticated webhook/internal API flows.
 
-Ack behavior on `send-message`:
-- Oversized: `{ ok: false, error: "Message too long (max 2000 characters)" }`
-- Empty: `{ ok: false, error: "Message cannot be empty" }`
-- Moderation: `{ ok: false, error: "Message contains disallowed content" }` (or similar)
+## Responsibilities
+- Expose HTTP routes used by the patient and admin applications.
+- Authenticate requests and enforce application authorization.
+- Read and write application data through Mongoose and the configured MongoDB instance.
+- Provide real-time communication through Socket.IO.
+- Integrate with configured email, media-storage and payment providers.
+- Send automation events to n8n and provide authenticated internal endpoints.
+- Provide restricted API routes consumed by the separate MCP server.
 
-Rate limiting:
-- Per appointment + sender sliding window limit (defaults: 20 messages / 10s).
-- Config: `SEND_RATE_MAX`, `SEND_RATE_WINDOW_MS`.
-- On limit: `{ ok: false, error: "Rate limit exceeded. Try again in Xs" }`.
-- For production at scale, consider Redis-backed rate limiting.
+n8n and the MCP server should call supported backend endpoints rather than connect directly to MongoDB.
 
-## Headers: Users vs Doctors
-Express lowercases incoming header names. Keep docs and clients consistent.
-- Users: send JWT in header `token`.
-- Doctors: send JWT in header `dtoken`.
+## Architecture
 
-Example (Axios):
-```js
-// user
-axios.get(`${backendUrl}/api/user/messages/${appointmentId}`, {
-  headers: { token }
-});
-
-// doctor
-axios.get(`${backendUrl}/api/doctor/messages/${appointmentId}`, {
-  headers: { dtoken: dToken }
-});
+```mermaid
+flowchart LR
+    WEB[Patient frontend] --> API[Express API :8000]
+    ADMIN[Admin frontend] --> API
+    API --> AUTH[Authentication / authorization]
+    AUTH --> ROUTES[Routes and services]
+    ROUTES --> DB[(MongoDB via Mongoose)]
+    API <--> WS[Socket.IO]
+    API -->|Authenticated event| N8N[n8n]
+    N8N -->|Internal key| API
+    MCP[MCP server] -->|Restricted API + MCP key| API
+    ROUTES --> EXT[Configured external integrations]
 ```
 
-## Socket.IO Path Alignment
-The server uses a custom Socket.IO path: `/socket.io/`.
-Some load balancers, CDNs, and proxies are configured to upgrade WebSockets only on that path. If the client uses a different path, you can see 400/404s, long‑poll fallbacks, or intermittent connection issues.
+Kubernetes probes use `GET /api/live` for startup/liveness and `GET /api/health` for readiness. Check the source before relying on other endpoint paths.
 
-Always set the same path on clients and pass the auth token via `auth`:
-```js
-import { io } from 'socket.io-client';
+## Technology
+- Node.js ES modules, Express 5 and Mongoose
+- JSON Web Tokens and bcrypt
+- Socket.IO, Redis client and Socket.IO Redis adapter dependencies
+- Cloudinary, Brevo and Stripe SDKs
+- Jest, Supertest and mongodb-memory-server
 
-const socket = io(backendUrl, {
-  path: '/socket.io/',
-  auth: { token: userOrDoctorJWT },
-  transports: ['websocket'] // optional but helps behind some proxies
-});
+## Requirements
+- Node.js 20 or later recommended to align with CI
+- npm
+- Reachable MongoDB and valid connection configuration
+- Credentials for enabled external integrations
+- n8n and shared authentication secrets when testing automation
 
-socket.emit('join-appointment', appointmentId);    
+## Local setup
 
-socket.emit('send-message', { appointmentId, message, clientMessageId }, (ack) => {
-  if (!ack?.ok) console.warn('Send failed:', ack?.error);
-});
+```bash
+cd backend
+npm ci
+npm start
 ```
 
-## Environment Variables
-- `MAX_MESSAGE_LENGTH` (default `2000`)
-- `BASIC_MODERATION_ENABLED` (`true` | `false`, default `false`)
-- `SEND_RATE_MAX` (default `20`)
-- `SEND_RATE_WINDOW_MS` (default `10000`)
+For development with automatic restart:
 
-## Read Receipts (✓✓)
-- REST fetch marks opposite-side unread messages as read for that appointment and sets `readAt`.
-- Socket event `messages-read` is also supported so UIs can flip ticks immediately when chat is focused, without waiting for fetch.
-
-Server emits:
-```js
-io.to(`appointment-${appointmentId}`).emit('messages-read', { appointmentId, by, readAt })
+```bash
+npm run server
 ```
 
-Client should emit on focus/visibility:
-```js
-socket.emit('messages-read', { appointmentId })
+Create the environment file expected by the backend; check `.env.example` and source references for exact variable names. Never commit credentials. Kubernetes exposes container port `8000`; if you change it, update frontend URLs, Docker configuration, probes and Services together.
+
+## Environment and secrets
+
+Deployment references include:
+- MongoDB connection and JWT/authentication settings
+- Cloudinary, Brevo and Stripe credentials when those integrations are enabled
+- `DOCOP_WEBHOOK_SECRET` for authenticated backend-to-n8n events
+- `DOCOP_INTERNAL_KEY` for trusted internal API calls
+- `DOCOP_MCP_KEY` for MCP server calls
+- `CORS_ORIGINS`, `NODE_ENV` and `PORT`
+- Redis connection settings when cross-instance Socket.IO messaging is enabled
+
+Use Kubernetes Secrets for sensitive values and ConfigMaps for non-sensitive settings.
+
+## Messaging and Socket.IO
+
+The current backend documentation describes:
+- Default maximum message length of 2,000 characters, configurable with `MAX_MESSAGE_LENGTH`.
+- Empty messages rejected after trimming.
+- Optional basic moderation via `BASIC_MODERATION_ENABLED`.
+- Rate limiting configured by `SEND_RATE_MAX` and `SEND_RATE_WINDOW_MS`.
+- Custom Socket.IO path `/socket.io/`; clients must use the same path.
+- Documented user and doctor REST header conventions: `token` and `dtoken`.
+- Cursor-based message history pagination using `before` and `limit`.
+
+Check source code and tests for exact routes, payloads, acknowledgements and event behavior.
+
+## Tests
+
+```bash
+npm test -- --ci
 ```
 
-## Pagination API
-- Endpoint (user): `GET /api/user/messages/:appointmentId?before=ISO_OR_ID&limit=50`
-- Endpoint (doctor): `GET /api/doctor/messages/:appointmentId?before=ISO_OR_ID&limit=50`
-- Sort: newest → oldest; returns `messages` array, `cursor` with `{ before, id }`, and `hasMore`.
-- Frontend should show messages ASC and load older pages on scroll-top, maintaining scroll position.
+Some tests use `mongodb-memory-server`, which may download a MongoDB binary in a clean environment.
 
+## Docker and Kubernetes
 
---- END OF README.md --
+```bash
+docker build -t docop-backend ./backend
+kubectl apply -k k8s/
+kubectl -n docop get deployments,pods,services
+kubectl -n docop logs deploy/backend
+```
+
+Create required Secrets before applying Kubernetes resources. The backend manifest is `k8s/30-backend.yaml`; it defines two replicas, health probes, resource requests/limits and a non-root container security context.
+
+## Related docs
+- [Project overview](../README.md)
+- [Kubernetes](../K8S.md)
+- [Automation](../AUTOMATION.md)
+- [MCP](../MCP.md)
+- [Security hardening](../docs/PHASE0_SECURITY_HARDENING.md)

@@ -153,10 +153,16 @@ The same manifests run on a real server, because k3d is k3s. [`k8s-cloud/`](./k8
 | `http://` redirects to `https://` | `redirect-https.yaml` |
 | Images pulled from GHCR (`:kubernetes` tag, `imagePullPolicy: Always`) instead of imported by hand | `kustomization.yaml` |
 
-The server is an Oracle Cloud Always Free Ampere A1 VM (2 OCPU, 12 GB, ARM) running k3s. CI builds the images for both `amd64` and `arm64`.
+The server is an Azure VM (`135.235.217.150`) running k3s. CI builds the images for both `amd64` and `arm64`.
 
+### Connecting to the Cloud Server (SSH)
+```powershell
+ssh -i docop-cluster_key.pem azureuser@135.235.217.150
+```
+*(Key file: `Documents/docop-cluster_key.pem`)*
+
+### Initial Setup (once on the VM)
 ```bash
-# on the VM, once
 curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.20.3/cert-manager.yaml
 git clone -b kubernetes https://github.com/suvini2001/Second-Year-Project.git && cd Second-Year-Project
@@ -164,9 +170,14 @@ kubectl apply -f k8s/00-namespace.yaml
 kubectl -n docop create secret generic backend-env --from-env-file=backend/.env   # .env copied with scp, then deleted
 kubectl -n docop create secret generic docop-secrets --from-env-file=.env
 kubectl apply -k k8s-cloud
+```
 
-# every later deploy
+### Every later deploy
+```bash
+cd ~/Second-Year-Project
+git pull
 bash scripts/deploy-cloud.sh
+kubectl -n docop rollout restart deployment/admin
 ```
 
 The Vercel and Render deployments stay as they are. The cloud cluster is the infrastructure version of the same app.
