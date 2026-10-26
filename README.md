@@ -34,7 +34,7 @@ The project was upgraded in phases, each on its own branch and tag:
 
 ## Live Deployments
 
-### 🌐 Cloud Kubernetes Cluster (Oracle Cloud VM)
+### 🌐 Cloud Kubernetes Cluster (Azure VM)
 Direct public links to the live containerized Kubernetes cluster:
 
 - **Frontend (Patient Site):** [http://k8s.docop.me](http://k8s.docop.me)
@@ -67,9 +67,34 @@ Helpful notes:
 - Recommended browsers: Chrome, Edge, Firefox (desktop and modern mobile browsers are supported).
 - Cluster health check: `GET http://k8s.docop.me/api/health` to confirm the backend in the cluster is healthy and connected to MongoDB.
 
+---
 
+## Cloud Server (Azure VM) Access & Deployment
 
+### Server Details
+- **Host / Public IP:** `135.235.217.150`
+- **Username:** `azureuser`
+- **SSH Key:** `docop-cluster_key.pem` (located in `Documents/docop-cluster_key.pem`)
 
+### Step 1: Connect to the Server (SSH Access)
+Run the following command to log into the Azure VM:
+
+```powershell
+ssh -i docop-cluster_key.pem azureuser@135.235.217.150
+```
+> *(If running from the project root directory: `ssh -i Documents/docop-cluster_key.pem azureuser@135.235.217.150`)*
+
+### Step 2: Update & Redeploy
+Once successfully logged into the server (when the prompt shows `azureuser@...`), run the update and restart commands in order:
+
+```bash
+cd ~/Second-Year-Project
+git pull
+bash scripts/deploy-cloud.sh
+kubectl -n docop rollout restart deployment/admin
+```
+
+---
 
 ## Security & Reliability
 
