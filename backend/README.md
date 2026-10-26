@@ -49,7 +49,7 @@ const socket = io(backendUrl, {
   transports: ['websocket'] // optional but helps behind some proxies
 });
 
-socket.emit('join-appointment', appointmentId);
+socket.emit('join-appointment', appointmentId);    
 
 socket.emit('send-message', { appointmentId, message, clientMessageId }, (ack) => {
   if (!ack?.ok) console.warn('Send failed:', ack?.error);
@@ -83,4 +83,4 @@ socket.emit('messages-read', { appointmentId })
 - Frontend should show messages ASC and load older pages on scroll-top, maintaining scroll position.
 
 
---- END OF README.md ---
+--- END OF README.md --
