@@ -1,7 +1,7 @@
 # 2YP Medical Appointment System
 
 <!-- Deployment badges -->
-[![User site status](https://img.shields.io/website?label=docop.me&url=https%3A%2F%2Fdocop.me)](https://docop.me) [![Admin site status](https://img.shields.io/website?label=admin&url=https%3A%2F%2Fsecond-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app)](https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/) [![Backend status](https://img.shields.io/website?label=docop-backend&url=https%3A%2F%2Fdocop-backend.onrender.com)](https://docop-backend.onrender.com)
+[![K8s cluster](https://img.shields.io/website?label=k8s.docop.me&url=http%3A%2F%2Fk8s.docop.me)](http://k8s.docop.me) [![User site status](https://img.shields.io/website?label=docop.me&url=https%3A%2F%2Fdocop.me)](https://docop.me) [![Admin site status](https://img.shields.io/website?label=admin&url=https%3A%2F%2Fsecond-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app)](https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/) [![Backend status](https://img.shields.io/website?label=docop-backend&url=https%3A%2F%2Fdocop-backend.onrender.com)](https://docop-backend.onrender.com)
 [![CI](https://github.com/suvini2001/Second-Year-Project/actions/workflows/ci.yml/badge.svg?branch=kubernetes)](https://github.com/suvini2001/Second-Year-Project/actions/workflows/ci.yml)
 
 This repository contains a full-stack web application for managing medical appointments, with separate admin, doctor, and user interfaces. The system is divided into three main parts:
@@ -34,25 +34,38 @@ The project was upgraded in phases, each on its own branch and tag:
 
 ## Live Deployments
 
-- Frontend (user-facing): https://docop.me  (deployed on Vercel)
-- Admin / Doctor portal: https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/  (deployed on Vercel)
-- Backend API: https://docop-backend.onrender.com  (deployed on Render)
+### 🌐 Cloud Kubernetes Cluster (Oracle Cloud VM)
+Direct public links to the live containerized Kubernetes cluster:
+
+- **Frontend (Patient Site):** [http://k8s.docop.me](http://k8s.docop.me)
+- **Admin Panel (Doctor Site):** [http://k8s.docop.me/admin](http://k8s.docop.me/admin)
+- **n8n Automation:** [http://n8n.k8s.docop.me](http://n8n.k8s.docop.me)
+
+### 🚀 Serverless / Cloud Hosting (Vercel & Render)
+- **Frontend (Patient Site):** [https://docop.me](https://docop.me) (deployed on Vercel)
+- **Admin Panel (Doctor Site):** [https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/](https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/) (deployed on Vercel)
+- **Backend API:** [https://docop-backend.onrender.com](https://docop-backend.onrender.com) (deployed on Render)
 
 This repository contains a complete, fully-deployed project. ✅
 
 ## How to visit the live sites
 
-Quick links to the production deployments (clickable):
+Quick clickable links to the live deployments:
 
-- User (production): [https://docop.me](https://docop.me) — the public patient-facing site.
-- Admin / Doctor portal (production): [https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/](https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/) — combined admin & doctor dashboard.
-- Backend API (production): [https://docop-backend.onrender.com](https://docop-backend.onrender.com) — REST API & Socket.IO server.
+### 1. Kubernetes Cluster (Production)
+- **Patient Site (Frontend):** [http://k8s.docop.me](http://k8s.docop.me) — the public patient-facing site for discovering doctors and booking appointments.
+- **Admin & Doctor Portal:** [http://k8s.docop.me/admin](http://k8s.docop.me/admin) — portal for doctors and administrators to manage appointments and schedules.
+- **n8n Automation Engine:** [http://n8n.k8s.docop.me](http://n8n.k8s.docop.me) — automated workflow engine handling event notifications, appointment reminders, and AI booking assistant.
+
+### 2. Alternative Deployments (Vercel & Render)
+- **Patient Site:** [https://docop.me](https://docop.me)
+- **Admin / Doctor Portal:** [https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/](https://second-year-project-iw16gwhcc-suvini-fonsekas-projects.vercel.app/)
+- **Backend API:** [https://docop-backend.onrender.com](https://docop-backend.onrender.com)
 
 Helpful notes:
 
-- These badges above display live, at-a-glance status for the three deployments (production). If you maintain a separate staging environment you can add additional shields.io / Vercel / Render status badges here.
-- Recommended browsers: Chrome, Edge, Firefox (desktop and modern mobile browsers are supported but desktop offers the best admin UX).
-- API health check: use `GET /api/health` (e.g. hit `https://docop-backend.onrender.com/api/health`) to confirm the backend is responding and connected to the database.
+- Recommended browsers: Chrome, Edge, Firefox (desktop and modern mobile browsers are supported).
+- Cluster health check: `GET http://k8s.docop.me/api/health` to confirm the backend in the cluster is healthy and connected to MongoDB.
 
 
 
